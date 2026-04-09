@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme {
+    /* Professional SaaS Blue/Indigo Primary Palette */
+    --color-primary-50: #eff6ff;
+    --color-primary-100: #dbeafe;
+    --color-primary-200: #bfdbfe;
+    --color-primary-300: #93c5fd;
+    --color-primary-400: #60a5fa;
+    --color-primary-500: #3b82f6;
+    --color-primary-600: #2563eb;
+    --color-primary-700: #1d4ed8;
+    --color-primary-800: #1e40af;
+    --color-primary-900: #1e3a8a;
+
+    /* Clean Grays for Neutrals */
+    --color-neutral-5: #f8fafc;
+    --color-neutral-10: #f1f5f9;
+    --color-neutral-20: #e2e8f0;
+    --color-neutral-30: #cbd5e1;
+    --color-neutral-40: #94a3b8;
+    --color-neutral-50: #64748b;
+    --color-neutral-60: #475569;
+    --color-neutral-70: #334155;
+    --color-neutral-80: #1e293b;
+    --color-neutral-90: #0f172a;
+
+    /* Semantic Colors */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+    --color-info: #0ea5e9;
+
+    /* Modern Soft Shadows */
+    --shadow-elevation-1: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-elevation-2: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-elevation-3: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+}
+
+body {
+    background-color: var(--color-neutral-10);
+    color: var(--color-neutral-90);
+    font-family: 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar for a polished look */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--color-neutral-30);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-neutral-40);
+}

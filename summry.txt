@@ -1,0 +1,283 @@
+HolisticHubPro – Complete Salon Management System – Project State Summary
+Project Overview
+A full‑featured, scalable salon management system with integrated booking, staff management, customer loyalty, financial tracking, inventory, and accounting. Built with Laravel 12+ (backend API) and Vue.js 3 (SPA). Includes RBAC, Google Calendar two‑way sync, automated notifications, and a complete POS.
+
+Current Status
+✅ Phase 1 (Foundation) complete: authentication, user management, RBAC (Spatie permissions, policies, middleware), basic Vue layout, login, user CRUD.
+
+🔄 Phase 2 (Services & Products) is partially built: we have migrations, models, policies, controllers, form requests, API resources, and frontend stores/components defined. Implementation is ready to be continued.
+
+Technology Stack
+Backend: Laravel 12, Sanctum (tokens), Spatie Laravel-Permission, MySQL, Redis (queues/cache), Google Client API, Twilio (SMS).
+
+Frontend: Vue 3 (Composition API), Vite, Pinia, Vue Router, Axios, Tailwind CSS (or Material Design from existing).
+
+DevOps: Git, CI/CD (planned), Laravel Forge / Docker (future).
+
+Database Schema (Key Tables)
+(All tables with migrations, indexes on foreign keys)
+
+users: id, name, email, password, phone, avatar, type (staff/customer/supplier), is_active, timestamps, remember_token.
+staff: id, user_id, position, commission_rate, working_days (json), google_calendar_id, google_access_token, google_refresh_token, timestamps.
+roles, permissions, model_has_roles, role_has_permissions (spatie).
+
+services: id, name, description, price, duration_minutes, is_active, timestamps.
+products: id, name, description, price, cost_price, stock_quantity, low_stock_threshold, supplier_id (foreign to users), is_active, timestamps.
+packages: id, name, description, total_price, is_active, timestamps.
+package_items: id, package_id, itemable_type, itemable_id, quantity, price_at_time.
+
+customer_profiles: id, user_id, birthday, preferred_contact, loyalty_points, reliability, total_visits, total_spent.
+referrals: id, referrer_id, referred_id, points_awarded.
+promotions: id, code, description, type (percentage/fixed), value, valid_from, valid_until, is_active.
+customer_promotions: id, customer_id, promotion_id, is_used, used_at.
+
+appointments: id, customer_id, staff_id, cabin_id, start_time, end_time, status, notes, google_event_id.
+appointment_services: id, appointment_id, service_id, price, duration_minutes.
+staff_availabilities: id, staff_id, date, start_time, end_time, is_available.
+
+sales: id, invoice_number, customer_id, staff_id, subtotal, tax, discount, total, payment_method, status.
+sale_items: id, sale_id, itemable_type, itemable_id, quantity, unit_price, total.
+cash_register: id, opening_balance, closing_balance, opened_by, closed_by, opened_at, closed_at, expected_closing, actual_closing, notes.
+bank_accounts: id, account_name, account_number, bank_name, balance.
+transactions: id, transactable_type, transactable_id, bank_account_id, type (income/expense/transfer), amount, description.
+expense_categories: id, name, description.
+expenses: id, category_id, amount, expense_date, description, payment_method, paid_by.
+product_usage: id, appointment_id, sale_id, product_id, staff_id, quantity_used, cost_per_unit.
+inventory_transactions: id, product_id, type (purchase/sale/usage/adjustment/return), quantity_change, unit_cost, unit_price, reference_id, reference_type, notes, created_by.
+cash_transactions: id, cash_register_id, type (in/out), amount, reason, reference_id, reference_type, created_by.
+supplier_orders: id, supplier_id, order_date, expected_delivery, status, total.
+supplier_order_items: id, supplier_order_id, product_id, quantity, unit_cost, total.
+cabins: id, name, description, is_active.
+cabin_occupancy: id, cabin_id, date, total_slots, booked_slots.
+daily_profit_loss: id, date, total_revenue, total_cogs, gross_profit, total_expenses, net_profit.
+
+API Endpoints (Versioned /api/v1)
+Authentication
+
+POST /login
+
+POST /logout (auth:sanctum)
+
+GET /user (returns user with roles/permissions)
+
+Users & Roles
+
+GET /users (with pagination)
+
+POST /users
+
+GET /users/{id}
+
+PUT /users/{id}
+
+DELETE /users/{id}
+
+POST /user/change-password
+
+GET /roles
+
+POST /roles
+
+GET /roles/{id}
+
+PUT /roles/{id}
+
+DELETE /roles/{id}
+
+GET /permissions
+
+Services (protected by policies)
+
+GET /services (paginated)
+
+POST /services
+
+GET /services/{id}
+
+PUT /services/{id}
+
+DELETE /services/{id}
+
+Products (similar)
+
+GET /products
+
+POST /products
+
+GET /products/{id}
+
+PUT /products/{id}
+
+DELETE /products/{id}
+
+Customers (coming soon)
+Appointments (coming soon)
+Sales / POS (coming soon)
+Accounting (coming soon)
+Google Calendar (coming soon)
+Notifications (coming soon)
+
+Key Implementation Details
+Authentication & Authorization
+Sanctum for API tokens.
+
+Spatie for roles/permissions.
+
+Policies for all models (UserPolicy, RolePolicy, PermissionPolicy, ServicePolicy, ProductPolicy, etc.) – all have before() that lets admin bypass.
+
+Middleware: PermissionMiddleware and RoleMiddleware that dynamically create permissions/roles if missing.
+
+Frontend: usePermissions composable checks user permissions from store.
+
+Existing Controllers & Models (completed)
+AuthController – login/logout.
+
+UserController – CRUD with role sync (no direct permission assignment to users, only roles).
+
+RoleController – CRUD with permission sync, prevents deletion of admin role.
+
+PermissionController – CRUD, checks usage before delete.
+
+Services & Products (partial – ready to finish)
+Migrations for services and products are defined.
+
+Models: Service, Product.
+
+Policies: ServicePolicy, ProductPolicy (need to be created but logic ready).
+
+Controllers: ServiceController, ProductController (code provided with authorize calls).
+
+Form Requests: ServiceRequest, ProductRequest (validation rules).
+
+API Resources: ServiceResource, ProductResource.
+
+Routes added in api.php (under auth:sanctum).
+
+Frontend stores: services.js, products.js (Pinia) with actions.
+
+Frontend components: ServiceList.vue, ServiceForm.vue (with modal), similar for products.
+
+Permissions to seed: view services, create services, edit services, delete services, and same for products.
+
+Google Calendar Integration (planned)
+Store OAuth tokens in staff table.
+
+Service class GoogleCalendarService handles create/update/delete events.
+
+Sync commands/queues for two-way sync.
+
+Routes for OAuth flow.
+
+Notifications (planned)
+Use Laravel notifications.
+
+Email via Mail, SMS via Twilio (custom channel).
+
+Appointment reminders scheduled with queue.
+
+Accounting Module (planned)
+cost_price in products.
+
+product_usage table to record consumption.
+
+inventory_transactions for audit trail.
+
+expenses table with categories.
+
+Daily profit/loss aggregation.
+
+Frontend Structure (Vue 3 + Pinia)
+text
+src/
+├── assets/
+├── components/common/ (Modal, ConfirmDialog, DataTable, Inputs)
+├── composables/ (useApi, useAuth, usePermissions, useToast) – usePermissions returns `can(permission)`
+├── layouts/AppLayout.vue (sidebar with dynamic menu based on permissions)
+├── router/axios.js (routes with meta { requiresAuth, permission })
+├── stores/
+│   ├── auth.js (user, token, login/logout, fetchUser)
+│   ├── users.js (CRUD for users)
+│   ├── services.js (fetch, create, update, delete) – exists
+│   ├── products.js – exists
+│   └── (others to be added)
+├── utils/api.js (axios instance with auth header and 401 redirect)
+├── views/
+│   ├── auth/Login.vue
+│   ├── dashboard/Dashboard.vue
+│   ├── users/UserList.vue, UserForm.vue
+│   ├── services/ServiceList.vue, ServiceForm.vue (modal)
+│   ├── products/ProductList.vue, ProductForm.vue
+│   └── ... (others planned)
+└── App.vue
+Implementation Phases (Remaining)
+Phase 2: Services & Products – finish implementation (controllers, policies, frontend integration, permissions seeder).
+
+Phase 3: Customers & Loyalty – customer profiles, loyalty points, referrals, promotions.
+
+Phase 4: Appointments & Calendar – booking, availability, Google Calendar sync.
+
+Phase 5: Staff Management & Commission – working hours, commission calculation.
+
+Phase 6: POS & Sales – POS interface, sales processing, cash register.
+
+Phase 7: Accounting & Expenses – expense tracking, product usage, profit/loss reports.
+
+Phase 8: Supplier & Purchase Orders – supplier management, purchase orders.
+
+Phase 9: Facilities & Additional Features – cabins, occupancy tracking.
+
+Phase 10: Testing, Optimization & Deployment – performance, caching, read replicas, CI/CD.
+
+Code Examples (Critical Snippets)
+UserPolicy (existing)
+php
+public function before(User $user, string $ability): ?bool
+{
+    if ($user->hasRole('admin')) return true;
+    return null;
+}
+public function viewAny(User $user): bool
+{
+    return $user->hasPermissionTo('view users');
+}
+// ...
+ServicePolicy (to be created)
+php
+class ServicePolicy
+{
+    use HandlesAuthorization;
+    public function before($user, $ability) { if ($user->hasRole('admin')) return true; }
+    public function viewAny(User $user) { return $user->hasPermissionTo('view services'); }
+    public function create(User $user) { return $user->hasPermissionTo('create services'); }
+    // ...
+}
+ServiceController (existing code)
+php
+public function index()
+{
+    $this->authorize('viewAny', Service::class);
+    return ServiceResource::collection(Service::latest()->paginate(20));
+}
+// ... other methods with authorize
+Frontend Service Store (Pinia)
+javascript
+export const useServiceStore = defineStore('services', {
+  state: () => ({ services: [], loading: false, pagination: {} }),
+  actions: {
+    async fetchServices(page = 1) { /* uses apiClient */ },
+    async createService(data) { /* ... */ },
+    // ...
+  }
+});
+Frontend usePermissions composable
+javascript
+export function usePermissions() {
+  const authStore = useAuthStore();
+  const can = (permission) => {
+    return authStore.permissions.includes(permission) || authStore.user?.roles?.includes('admin');
+  };
+  return { can };
+}
+Next Steps
+To continue, open a new chat and paste this summary. Then we can immediately start with Phase 2 by creating the missing policy files for Service and Product, finishing the controllers, running migrations, and testing the frontend components. Let me know when you're ready, and I'll guide you step by step.
+
