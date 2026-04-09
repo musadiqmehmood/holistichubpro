@@ -57,10 +57,10 @@ npm run dev
 holistichubpro/
 │
 ├── app/
-│   ├── Events
-│   │   │   ├── EventServiceProvider.php
-│   │   │   ├── PermissionChanged.php
-│   │   │   ├── RoleChanged.php
+│   ├── Events/
+│   │   ├── EventServiceProvider.php
+│   │   ├── PermissionChanged.php
+│   │   └── RoleChanged.php
 │   ├── Http/
 │   │   ├── Controllers/
 │   │   │   ├── AuthController.php
@@ -71,11 +71,11 @@ holistichubpro/
 │   │   │       ├── PermissionController.php
 │   │   │       ├── AuditLogController.php
 │   │   │       └── BranchController.php
-│   │   ├── Middleware/
-│   │   │   ├── EnsurePasswordIsNotExpired.php
+│   │   └── Middleware/
+│   │       └── EnsurePasswordIsNotExpired.php
 │   ├── Listeners/
-│   │   │   ├── LogPermissionChange.php
-│   │   │   ├── LogRoleChange.php
+│   │   ├── LogPermissionChange.php
+│   │   └── LogRoleChange.php
 │   ├── Models/
 │   │   ├── User.php
 │   │   ├── Branch.php
@@ -87,59 +87,45 @@ holistichubpro/
 │   │   ├── AuditLogPolicy.php
 │   │   ├── PermissionPolicy.php
 │   │   ├── RolePolicy.php
-│   │   ├── UserPolicy.php
+│   │   └── UserPolicy.php
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
 │   │   ├── AuthServiceProvider.php
 │   │   ├── EventServiceProvider.php
-│   │   ├── RouteServiceProvider.php
+│   │   └── RouteServiceProvider.php
 │   ├── Rules/
 │   │   ├── NotRecentPassword.php
-│   │   ├── SalonPassword.php
+│   │   └── SalonPassword.php
 │   ├── Services/
-│   │   ├── AuditLogService.php
-│   ├── Traits/
-│   │   ├── Auditable.php
+│   │   └── AuditLogService.php
 ├── bootstrap/
 ├── config/
-│   └── app.php
-│   └── auth.php
-│   └── cache.php
-│   └── cors.php
-│   └── database.php
-│   └── filesystems.php
-│   └── logging.php
-│   └── mail.php
-│   └── permission.php
-│   └── queue.php
-│   └── sanctum.php
-│   └── services.php
+│   ├── app.php
+│   ├── auth.php
+│   ├── cache.php
+│   ├── cors.php
+│   ├── database.php
+│   ├── filesystems.php
+│   ├── logging.php
+│   ├── mail.php
+│   ├── permission.php
+│   ├── queue.php
+│   ├── sanctum.php
+│   ├── services.php
 │   └── session.php
 ├── database/
 │   ├── migrations/
-│   │   ├── 0001_01_01_000001_create_cache_table.php
-│   │   ├── 0001_01_01_000002_create_jobs_table.php
-│   │   ├── 2025_08_28_114309_create_personal_access_tokens_table.php
-│   │   ├── 2025_08_28_130158_create_permission_tables.php
-│   │   ├── 2026_03_14_172000_create_branches_table.php
-│   │   ├── 2026_03_14_172100_create_users_table.php
-│   │   ├── 2026_03_14_172200_add_security_fields_to_users_table.php
-│   │   ├── 2026_03_14_172204_create_audit_logs_table.php
-│   │   ├── 2026_03_14_172208_create_password_histories_table.php
-│   │   ├── 2026_03_14_172214_add_branch_id_to_model_has_roles_table.php
-│   │   ├── 2026_03_15_000001_fix_model_has_roles_primary_key.php
-│   │   ├── 2026_03_16_225653_make_audit_logs_performed_by_nullable.php
+│   │   ├── 2026_01_01_000001_create_cache_jobs_tokens_tables.php
+│   │   ├── 2026_01_01_000002_create_branches_users_password_histories_tables.php
+│   │   ├── 2026_01_01_000003_create_permission_tables_with_branch_support.php
+│   │   └── 2026_01_01_000004_create_audit_logs_table.php
 │   └── seeders/
-│   │   ├── BranchSeeder.php
-│   │   ├── DatabaseSeeder.php
-│   │   ├── RolePermissionSeeder.php
-│   │   ├── SuperAdminSeeder.php
-│   │   ├── TestUsersSeeder.php
+│       ├── DatabaseSeeder.php
+│       └── InitialSetupSeeder.php
 ├── routes/
-│   └── api.php
-│   └── console.php
+│   ├── api.php
+│   ├── console.php
 │   └── web.php
-│
 ├── composer.json
 └── .env
 ```
@@ -152,7 +138,6 @@ holistichubpro/
 holistichubpro-frontend/
 │
 ├── public/
-│
 ├── src/
 │   ├── api/
 │   │   ├── axios.js
@@ -163,19 +148,19 @@ holistichubpro-frontend/
 │   │   ├── branches.js
 │   │   └── audit.js
 │   ├── components/
-│   │   └── auth/
-│   │       ├── ChangePasswordView.vue
-│   │       ├── EmailVerificationView.vue
-│   │       └── LoginView .vue
-│   │   └── common/
-│   │       ├── PasswordStrength.vue
-│   │       └── PermissionGate.vue
-│   │   └── layout/
-│   │       ├── AppHeader.vue
-│   │       ├── AppLayout.vue
-│   │       └── AppSidebar.vue
-│   │   └── modals/
-│   │       ├── UserFormModal.vue
+│   │   ├── auth/
+│   │   │   ├── ChangePasswordView.vue
+│   │   │   ├── EmailVerificationView.vue
+│   │   │   └── LoginView.vue
+│   │   ├── common/
+│   │   │   ├── PasswordStrength.vue
+│   │   │   └── PermissionGate.vue
+│   │   ├── layout/
+│   │   │   ├── AppHeader.vue
+│   │   │   ├── AppLayout.vue
+│   │   │   └── AppSidebar.vue
+│   │   ├── modals/
+│   │   │   └── UserFormModal.vue
 │   │   └── ui/
 │   │       ├── AppAlert.vue
 │   │       ├── AppAvatar.vue
@@ -195,33 +180,30 @@ holistichubpro-frontend/
 │   │   ├── branch.js
 │   │   └── ui.js
 │   ├── views/
-│   │   └── admin/
-│   │       ├── users/
-│   │       │     ├── UsersListView.vue
-│   │       ├── roles/
-│   │       │     ├── RolesListView.vue
-│   │       ├── permissions/
-│   │       │     ├── PermissionsListView.vue
-│   │       ├── branches/
-│   │       │     ├── BranchesListView.vue
-│   │       └── audit/
-│   │       │     ├── AuditLogsView.vue
+│   │   ├── admin/
+│   │   │   ├── users/
+│   │   │   │   └── UsersListView.vue
+│   │   │   ├── roles/
+│   │   │   │   └── RolesListView.vue
+│   │   │   ├── permissions/
+│   │   │   │   └── PermissionsListView.vue
+│   │   │   ├── branches/
+│   │   │   │   └── BranchesListView.vue
+│   │   │   └── audit/
+│   │   │       └── AuditLogsView.vue
 │   │   ├── auth/
-│   │       ├── ChangePasswordView.vue
-│   │       ├── EmailVerificationView.vue
+│   │   │   ├── ChangePasswordView.vue
+│   │   │   ├── EmailVerificationView.vue
 │   │   │   └── LoginView.vue
 │   │   ├── dashboard/
 │   │   │   └── DashboardView.vue
-│   └── NotFoundView.vue
-├── src/
+│   │   └── NotFoundView.vue
 │   ├── App.vue
 │   ├── index.css
 │   ├── main.js
 │   └── style.css
-│
 ├── index.html
 ├── package.json
-├── package-lock.json
 ├── postcss.config.js
 ├── tailwind.config.js
 └── vite.config.js
@@ -254,29 +236,30 @@ POST   /api/change-password    {current_password, new_password}
 
 ### Admin (Requires: `admin` or `super-admin` role)
 ```http
-GET    /api/admin/users              ?page, per_page, branch_id
+GET    /api/admin/users              ?page, per_page, branch_id, role, search
 POST   /api/admin/users              {name, email, password, roles[], branch_id}
 GET    /api/admin/users/{id}
 PUT    /api/admin/users/{id}
 DELETE /api/admin/users/{id}
+POST   /api/admin/users/import       (CSV file)
 GET    /api/admin/users/{id}/audit-logs
 
-GET    /api/admin/roles              ?page
+GET    /api/admin/roles
 POST   /api/admin/roles              {name, permissions[]}
 PUT    /api/admin/roles/{id}
 DELETE /api/admin/roles/{id}
 
-GET    /api/admin/permissions        Grouped by resource
+GET    /api/admin/permissions
 
-GET    /api/admin/branches           ?page
+GET    /api/admin/branches
 POST   /api/admin/branches           {name, address, ...}
 PUT    /api/admin/branches/{id}
 DELETE /api/admin/branches/{id}
 
 GET    /api/admin/audit-logs         ?action, entity_type, performed_by, from_date, to_date, search, page
-GET    /api/admin/audit-logs/filters Actions, entity types, performers
-DELETE /api/admin/audit-logs/{id}    Super Admin only
-DELETE /api/admin/audit-logs/bulk-delete  {ids[]}  Super Admin only
+GET    /api/admin/audit-logs/filters
+POST   /api/admin/audit-logs/bulk-delete  {ids[]}
+DELETE /api/admin/audit-logs/{id}
 ```
 
 ---
@@ -287,7 +270,7 @@ DELETE /api/admin/audit-logs/bulk-delete  {ids[]}  Super Admin only
 ```
 {resource}.{action}
 
-Resources: users, roles, permissions, branches, audit-logs
+Resources: users, roles, permissions, branches, audit
 Actions:   view, create, edit, delete, access, manage
 
 Examples:
@@ -331,30 +314,30 @@ Gate::before(function ($user, $ability) {
 ```php
 Schema::create('audit_logs', function (Blueprint $table) {
     $table->id();
-    $table->string('action');           // e.g., 'role_attached'
-    $table->string('entity_type');      // e.g., 'App\Models\User'
+    $table->string('action');
+    $table->string('entity_type');
     $table->unsignedBigInteger('entity_id');
-    $table->foreignId('performed_by')   // User who did action
-          ->nullable()
-          ->default(1)                  // System user fallback
-          ->constrained('users')
-          ->nullOnDelete();
+    $table->unsignedBigInteger('performed_by')->nullable(); // no default
     $table->json('old_values')->nullable();
     $table->json('new_values')->nullable();
-    $table->string('ip_address')->default('127.0.0.1');
+    $table->string('ip_address')->nullable();
     $table->text('user_agent')->nullable();
     $table->timestamps();
+    $table->index(['entity_type', 'entity_id']);
+    $table->index('performed_by');
+    $table->index('created_at');
+    $table->index('action');
 });
 ```
 
 ### Fallback System
 ```php
 // AuditLogService.php - 5-layer fallback for performed_by:
-1. Explicit override passed to method
-2. Auth::id() (current user)
+1. Explicit override
+2. Authenticated user (Auth::id())
 3. Entity being modified (for User updates)
 4. user_id from old/new values
-5. System user (ID: 1) - ultimate fallback
+5. System user (ID: 1) – ultimate fallback
 ```
 
 ---
@@ -365,38 +348,26 @@ Schema::create('audit_logs', function (Blueprint $table) {
 // stores/auth.js
 const authStore = {
   state: {
-    user: { id, name, email, roles[], permissions[], branch },
+    user: { id, name, email, roles[], permissions[], branch, last_login_ip },
     token: string,
-    isAuthenticated: boolean
+    isAuthenticated: boolean,
+    requiresPasswordChange: boolean
   },
   getters: {
     isSuperAdmin: () => user.roles.includes('super-admin'),
-    hasPermission: (perm) => user.permissions.includes(perm),
-    userBranch: () => user.branch_id
+    hasPermission: (perm) => case‑insensitive check,
+    userBranch: () => user.branch
   },
   actions: {
     login(credentials),
     logout(),
-    changePassword(data),
+    changePassword({ current_password, password, password_confirmation }),
     fetchUser()
   }
 }
 ```
 
----
 
-## Common Issues & Fixes
-
-| Issue | Cause | Fix |
-|-------|-------|-----|
-| `401 Unauthorized` | Token expired/invalid | Re-login; check `localStorage.token` |
-| `403 Forbidden` | Missing permission | Check user roles; verify Gate |
-| `performed_by null` | Auth context lost | Ensure System user (ID:1) exists |
-| `whereDate` filter fails | Timezone mismatch | Use `startOfDay()` / `endOfDay()` |
-| Queue not processing | Worker not running | `php artisan queue:work` |
-| Permission changes not logging | Events not firing | Check EventServiceProvider mappings |
-
----
 
 ## Environment Variables
 
@@ -413,7 +384,7 @@ SESSION_DOMAIN=localhost
 QUEUE_CONNECTION=database      # For audit logging
 
 # Frontend (.env)
-VITE_API_BASE_URL=http://localhost:8000
+VITE_API_BASE_URL=http://localhost:8000/api   # includes /api
 ```
 
 ---
@@ -445,14 +416,14 @@ command=php artisan queue:work --sleep=3 --tries=3
 php artisan migrate:fresh --seed
 
 # Creates:
-# - System user (ID: 1) - audit log fallback
-# - Super admin (ID: 2) - admin@holistichubpro.com / Admin@123!
+# - System user (ID: 1) – audit log fallback
+# - Super admin (ID: 2) – admin@holistichubpro.com / Admin@123!
 # - Main branch
-# - All roles & permissions
+# - All roles & permissions (guard_name = 'web')
 ```
 
 ---
 
 ## License
 
-Proprietary - Unauthorized distribution prohibited.
+This README now accurately reflects the final production‑ready state of the application.
