@@ -14,10 +14,12 @@ class BranchController extends Controller
     {
         $this->authorize('viewAny', Branch::class);
 
+        $perPage = $request->input('per_page', 15);
+
         $branches = Branch::query()
             ->when($request->boolean('active_only'), fn($q) => $q->active())
             ->orderBy('name')
-            ->get();
+            ->paginate($perPage);
 
         return response()->json($branches);
     }
@@ -30,7 +32,6 @@ class BranchController extends Controller
 
         $branch = Branch::create($validated);
 
-        // EXPLICIT AUDIT LOG - Using Service for 100% reliability
         AuditLogService::log(
             'created',
             Branch::class,
@@ -52,14 +53,12 @@ class BranchController extends Controller
     {
         $this->authorize('update', $branch);
 
-        // Capture old values BEFORE update
         $oldValues = $branch->toArray();
 
         $validated = $request->validate($this->validationRules(true));
 
         $branch->update($validated);
 
-        // EXPLICIT AUDIT LOG - Using Service
         AuditLogService::log(
             'updated',
             Branch::class,
@@ -75,24 +74,24 @@ class BranchController extends Controller
     {
         $this->authorize('delete', $branch);
 
+        // Check if branch has users
         if ($branch->users()->exists()) {
             return response()->json([
                 'message' => 'Cannot delete branch with assigned users.'
             ], 409);
         }
 
+        // Check if branch is used in store settings
+        if (\App\Models\StoreSetting::where('branch_id', $branch->id)->exists()) {
+            return response()->json([
+                'message' => 'Cannot delete branch because it is used in store settings.'
+            ], 409);
+        }
+
         $oldValues = $branch->toArray();
         $branchId = $branch->id;
 
-        // EXPLICIT AUDIT LOG - BEFORE delete
-        AuditLogService::log(
-            'deleted',
-            Branch::class,
-            $branchId,
-            $oldValues,
-            null
-        );
-
+        AuditLogService::log('deleted', Branch::class, $branchId, $oldValues, null);
         $branch->delete();
 
         return response()->json(['message' => 'Branch deleted successfully']);

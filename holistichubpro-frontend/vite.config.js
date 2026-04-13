@@ -17,6 +17,10 @@ export default defineConfig({
                 target: 'http://localhost:8000',
                 changeOrigin: true,
             },
+            '/storage': {               // ✅ Add this block
+                target: 'http://localhost:8000',
+                changeOrigin: true,
+            },
         },
     },
 })

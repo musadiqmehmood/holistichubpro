@@ -2,10 +2,10 @@
 import axios from 'axios'
 
 const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',  // ✅ includes /api
+    baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
     withCredentials: true,
     headers: {
-        'Content-Type': 'application/json',
+        // ❌ REMOVED: 'Content-Type': 'application/json' – let browser set it for FormData
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
     }
@@ -17,11 +17,17 @@ api.interceptors.request.use(
         const token = localStorage.getItem('token')
         if (token) {
             config.headers.Authorization = `Bearer ${token}`
-            // ✅ F-07: Only log in development
             if (import.meta.env.DEV) console.log(`[API] Adding token to ${config.url}`)
         } else {
             if (import.meta.env.DEV) console.warn(`[API] No token found for ${config.url}`)
         }
+
+        // ✅ If the request contains FormData, remove the Content-Type header
+        // so that the browser sets the correct multipart boundary.
+        if (config.data instanceof FormData) {
+            delete config.headers['Content-Type']
+        }
+
         return config
     },
     (error) => Promise.reject(error)
@@ -38,7 +44,6 @@ api.interceptors.response.use(
 
             switch (response.status) {
                 case 401:
-                    // ✅ F-08: Prevent infinite redirect on login page
                     if (window.location.pathname !== '/login') {
                         localStorage.removeItem('token')
                         localStorage.removeItem('user')
@@ -51,7 +56,6 @@ api.interceptors.response.use(
                     break
 
                 case 419:
-                    // ✅ F-09: CSRF token expired - clear session and redirect
                     if (import.meta.env.DEV) console.error('[API] CSRF token expired')
                     localStorage.removeItem('token')
                     localStorage.removeItem('user')

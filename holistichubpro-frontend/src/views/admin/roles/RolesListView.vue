@@ -5,7 +5,6 @@
                 <h1 class="text-2xl font-bold text-gray-900">Roles Management</h1>
                 <p class="text-sm text-gray-500 mt-1">Manage system roles and their assigned permissions</p>
             </div>
-            <!-- ✅ F-47: Use permission check instead of isSuperAdmin -->
             <AppButton v-if="authStore.hasPermission('roles.create')" @click="openCreateModal" variant="filled" color="primary">
                 <svg class="w-5 h-5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -76,8 +75,7 @@
                                 </div>
                                 <div>
                                     <h3 class="font-bold text-lg text-gray-900">{{ formatRoleTitle(role.name) }}</h3>
-                                    <!-- ✅ F-48: guard_name is always 'web' -->
-                                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mt-0.5">web</p>
+                                    <p class="text-xs text-gray-500 uppercase tracking-wider font-semibold mt-0.5">{{ role.guard_name }}</p>
                                 </div>
                             </div>
 
@@ -101,7 +99,7 @@
 
                             <div class="flex justify-end gap-3 pt-4 border-t border-gray-100 mt-auto">
                                 <AppButton
-                                    v-if="role.name !== 'super-admin'"
+                                    v-if="role.name !== 'super-admin' && authStore.hasPermission('roles.edit')"
                                     size="small"
                                     variant="tonal"
                                     color="primary"
@@ -110,6 +108,7 @@
                                     Edit Role
                                 </AppButton>
                                 <AppButton
+                                    v-if="role.name !== 'super-admin' && authStore.hasPermission('roles.delete')"
                                     size="small"
                                     variant="text"
                                     color="error"
@@ -142,8 +141,14 @@
                     />
                 </AppFormField>
 
-                <!-- ✅ F-48: Removed guard_name select – hardcoded to 'web' -->
-                <input type="hidden" v-model="form.guard_name" />
+                <!-- Guard Name – preserved when editing, optional when creating -->
+                <AppFormField label="Guard Name" :error="errors.guard_name">
+                    <select v-model="form.guard_name" class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="web">web</option>
+                        <option value="api">api</option>
+                        <option value="sanctum">sanctum</option>
+                    </select>
+                </AppFormField>
 
                 <AppFormField label="Assign Permissions">
                     <div class="border border-gray-200 rounded-xl p-4 max-h-[50vh] overflow-y-auto bg-gray-50">
@@ -226,10 +231,10 @@ const saving = ref(false)
 const deleting = ref(false)
 const errors = ref({})
 
-// ✅ F-48: guard_name hardcoded to 'web'
+// Form state – guard_name is preserved from the role when editing
 const form = reactive({
     name: '',
-    guard_name: 'web',   // Fixed – no longer user selectable
+    guard_name: 'web',
     permissions: []
 })
 
@@ -303,7 +308,7 @@ const fetchPermissions = async () => {
 const openCreateModal = () => {
     editingRole.value = null
     form.name = ''
-    form.guard_name = 'web'
+    form.guard_name = 'web'   // default for new roles
     form.permissions = []
     errors.value = {}
     showModal.value = true
@@ -312,7 +317,8 @@ const openCreateModal = () => {
 const openEditModal = (role) => {
     editingRole.value = role
     form.name = role.name
-    form.guard_name = 'web'  // ✅ Ensure guard_name is always 'web'
+    // ✅ CRITICAL: Preserve the existing guard_name
+    form.guard_name = role.guard_name || 'web'
     form.permissions = role.permissions?.map(p => p.name) || []
     errors.value = {}
     showModal.value = true
@@ -329,7 +335,7 @@ const saveRole = async () => {
     try {
         const payload = {
             name: form.name.trim(),
-            guard_name: 'web',  // ✅ F-48: Hardcoded to 'web'
+            guard_name: form.guard_name,   // send the actual guard_name
             permissions: form.permissions.map(p => typeof p === 'object' ? p.name : p)
         }
         if (editingRole.value) {

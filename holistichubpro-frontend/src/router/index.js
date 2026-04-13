@@ -62,6 +62,72 @@ const routes = [
                 component: () => import('@/views/admin/branches/BranchesListView.vue'),
                 meta: { permission: 'branches.view' },
             },
+
+            // ── Settings Module ─────────────────────────────────────────────
+            {
+                path: 'settings',
+                component: () => import('@/views/admin/settings/SettingsView.vue'),
+                meta: { requiresAuth: true },
+                children: [
+                    {
+                        path: '',
+                        redirect: { name: 'StoreSettings' },
+                    },
+                    {
+                        path: 'store',
+                        name: 'StoreSettings',
+                        component: () => import('@/views/admin/settings/StoreSettingsView.vue'),
+                        meta: { permission: 'settings.view' },
+                    },
+                    {
+                        path: 'site',
+                        name: 'SiteSettings',
+                        component: () => import('@/views/admin/settings/SiteSettingsView.vue'),
+                        meta: { permission: 'settings.view' },
+                    },
+                    {
+                        path: 'smtp',
+                        name: 'SmtpSettings',
+                        component: () => import('@/views/admin/settings/SmtpSettingsView.vue'),
+                        meta: { permission: 'settings.manage' },
+                    },
+                    {
+                        path: 'taxes',
+                        name: 'TaxSettings',
+                        component: () => import('@/views/admin/settings/TaxListView.vue'),
+                        meta: { permission: 'taxes.view' },
+                    },
+                    {
+                        path: 'units',
+                        name: 'UnitsSettings',
+                        component: () => import('@/views/admin/settings/UnitsListView.vue'),
+                        meta: { permission: 'units.view' },
+                    },
+                    {
+                        path: 'payment-types',
+                        name: 'PaymentTypes',
+                        component: () => import('@/views/admin/settings/PaymentTypesView.vue'),
+                        meta: { permission: 'payment_types.view' },
+                    },
+                    {
+                        path: 'currencies',
+                        name: 'Currencies',
+                        component: () => import('@/views/admin/settings/CurrenciesView.vue'),
+                        meta: { permission: 'currencies.view' },
+                    },
+                    {
+                        path: 'change-password',
+                        name: 'SettingsPassword',
+                        component: () => import('@/views/auth/ChangePasswordView.vue'),
+                    },
+                    {
+                        path: 'backup',
+                        name: 'DatabaseBackup',
+                        component: () => import('@/views/admin/settings/DatabaseBackupView.vue'),
+                        meta: { superAdminOnly: true },
+                    },
+                ],
+            },
         ],
     },
     {
@@ -91,16 +157,13 @@ router.beforeEach(async (to, from, next) => {
             } catch (error) {
                 if (import.meta.env.DEV) console.error('[Router] Failed to fetch user:', error)
                 authStore.clearAuth()
-                if (to.path !== '/login') {
-                    return next('/login')
-                }
+                if (to.path !== '/login') return next('/login')
                 return next()
             }
         }
 
-        // ✅ F-12: Use to.matched.some() instead of to.meta directly for robustness
-        const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
-        const isGuestRoute = to.matched.some(record => record.meta.guest)
+        const requiresAuth    = to.matched.some(record => record.meta.requiresAuth)
+        const isGuestRoute    = to.matched.some(record => record.meta.guest)
         const isAuthenticated = authStore.isAuthenticated
 
         // 2. Guest attempting to access protected route
@@ -115,45 +178,47 @@ router.beforeEach(async (to, from, next) => {
             return next('/dashboard')
         }
 
-        // 4. Handle strict user states (Password change or Email Verification)
-        // 4. Handle strict user states (Password change or Email Verification)
+        // 4. Handle strict user states (password change or email verification)
         if (isAuthenticated) {
-            // Check for password expiry first
             if (authStore.requiresPasswordChange && to.path !== '/change-password') {
                 if (import.meta.env.DEV) console.log('[Router] Password change required, redirecting')
                 return next('/change-password')
             }
 
-            // ✅ Allow /change-password if user has a token (even if flag is false)
             if (to.path === '/change-password' && !authStore.requiresPasswordChange) {
-                // Don't redirect – let the user attempt to change password
-                // (the backend will enforce expiry and return error if not needed)
-                if (import.meta.env.DEV) console.log('[Router] Allowing change-password even without flag (user may have temporary token)')
+                if (import.meta.env.DEV) console.log('[Router] Allowing change-password without flag')
                 return next()
             }
 
-            // Check for email verification
             if (authStore.requiresVerification && to.path !== '/verify-email') {
                 if (import.meta.env.DEV) console.log('[Router] Email verification required, redirecting')
                 return next('/verify-email')
             }
         }
 
-        // 5. CRITICAL: Handle Permissions and Roles for protected routes
-        // ✅ F-10: Ensure user is loaded before checking permissions
+        // 5. Permission and role checks
         if (isAuthenticated && authStore.user !== null) {
-            // Check for permission meta on matched routes
-            const permissionRequired = to.matched.find(record => record.meta.permission)?.meta.permission
-            if (permissionRequired) {
-                const hasPermission = authStore.hasPermission(permissionRequired)
-                if (import.meta.env.DEV) console.log(`[Router] Permission check for ${permissionRequired}: ${hasPermission}`)
-                if (!hasPermission) {
-                    if (import.meta.env.DEV) console.warn(`[Router] Access denied: Missing permission ${permissionRequired}`)
-                    return next('/dashboard')
+            // Super-admin-only routes
+            const superAdminOnly = to.matched.some(record => record.meta.superAdminOnly)
+            if (superAdminOnly && !authStore.isSuperAdmin) {
+                if (import.meta.env.DEV) console.warn('[Router] Access denied: Super Admin only')
+                return next('/dashboard')
+            }
+
+            // Permission-gated routes (super-admin bypasses all permission checks)
+            if (!authStore.isSuperAdmin) {
+                const permissionRequired = to.matched.find(record => record.meta.permission)?.meta.permission
+                if (permissionRequired) {
+                    const hasPermission = authStore.hasPermission(permissionRequired)
+                    if (import.meta.env.DEV) console.log('[Router] Permission check for ' + permissionRequired + ': ' + hasPermission)
+                    if (!hasPermission) {
+                        if (import.meta.env.DEV) console.warn('[Router] Access denied: Missing permission ' + permissionRequired)
+                        return next('/dashboard')
+                    }
                 }
             }
 
-            // Check for role meta on matched routes
+            // Role-gated routes
             const roleRequired = to.matched.find(record => record.meta.role)?.meta.role
             if (roleRequired) {
                 const hasRole = authStore.hasRole(roleRequired)
@@ -165,14 +230,12 @@ router.beforeEach(async (to, from, next) => {
             }
         }
 
-        // 6. All checks passed, allow navigation
+        // 6. All checks passed
         return next()
 
     } catch (error) {
         if (import.meta.env.DEV) console.error('[Router] Navigation guard error:', error)
-        if (to.path !== '/login') {
-            return next('/login')
-        }
+        if (to.path !== '/login') return next('/login')
         return next()
     }
 })
@@ -180,7 +243,6 @@ router.beforeEach(async (to, from, next) => {
 // Global error handler for navigation errors
 router.onError((error) => {
     if (import.meta.env.DEV) console.error('[Router] Navigation error:', error)
-
     if (error.message?.includes('Failed to fetch dynamically imported module')) {
         if (import.meta.env.DEV) console.error('[Router] Chunk load error, reloading...')
         window.location.reload()

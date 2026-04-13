@@ -48,7 +48,14 @@
 
                 <template #actions="{ item }">
                     <div class="flex gap-2">
-                        <AppButton size="small" variant="text" @click="editBranch(item)">Edit</AppButton>
+                        <AppButton
+                            v-if="authStore.hasPermission('branches.edit')"
+                            size="small"
+                            variant="text"
+                            @click="editBranch(item)"
+                        >
+                            Edit
+                        </AppButton>
                         <AppButton
                             v-if="authStore.hasPermission('branches.delete')"
                             size="small"
@@ -75,7 +82,7 @@
             />
         </AppCard>
 
-        <!-- Create/Edit Modal -->
+        <!-- Create/Edit Modal (unchanged) -->
         <AppModal
             :is-open="showModal"
             :title="editingBranch ? 'Edit Branch' : 'Create Branch'"
@@ -84,6 +91,7 @@
             @confirm="handleSubmit"
         >
             <form @submit.prevent class="space-y-4">
+                <!-- form fields – same as before -->
                 <AppFormField label="Name" required :error="errors.name">
                     <input v-model="form.name" type="text" required class="w-full border rounded-lg px-4 py-2" />
                 </AppFormField>
@@ -151,7 +159,6 @@
         </AppModal>
 
         <!-- Delete Confirmation Modal -->
-        <!-- ✅ F-53: Removed unsupported confirm-color="error" prop -->
         <AppModal
             :is-open="showDeleteModal"
             title="Confirm Delete"
@@ -230,26 +237,23 @@ onMounted(() => {
     fetchBranches()
 })
 
-// ✅ F-51: Fetch branches with pagination parameter
 const fetchBranches = async (page = 1) => {
     loading.value = true
     error.value = null
     try {
-        const params = { page }
+        const params = { page, per_page: pagination.value.per_page || 10 }
         const response = await branchesApi.getAll(params)
         const data = response.data
-        if (Array.isArray(data)) {
-            branches.value = data
-            pagination.value = { current_page: 1, last_page: 1, total: data.length, from: 1, to: data.length }
-        } else {
-            branches.value = data.data || data
-            pagination.value = {
-                current_page: data.current_page || 1,
-                last_page: data.last_page || 1,
-                total: data.total || 0,
-                from: data.from || 0,
-                to: data.to || 0,
-            }
+
+        // Laravel paginator structure: { data: [], current_page, last_page, total, from, to, per_page }
+        branches.value = data.data || []
+        pagination.value = {
+            current_page: data.current_page || 1,
+            last_page: data.last_page || 1,
+            total: data.total || 0,
+            from: data.from || 0,
+            to: data.to || 0,
+            per_page: data.per_page || 10,
         }
     } catch (err) {
         error.value = err.response?.data?.message || err.message
@@ -259,7 +263,6 @@ const fetchBranches = async (page = 1) => {
     }
 }
 
-// ✅ F-51: Change page handler passes page to fetchBranches
 const changePage = (page) => {
     pagination.value.current_page = page
     fetchBranches(page)
@@ -298,7 +301,6 @@ const closeModal = () => {
     editingBranch.value = null
 }
 
-// ✅ F-52: Replace alert with uiStore notification
 const handleSubmit = async () => {
     saving.value = true
     errors.value = {}
@@ -335,7 +337,6 @@ const confirmDelete = (branch) => {
     showDeleteModal.value = true
 }
 
-// ✅ F-52: Replace alert with uiStore notification
 const deleteBranch = async () => {
     if (!branchToDelete.value) return
     deleting.value = true

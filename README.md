@@ -55,38 +55,63 @@ npm run dev
 
 ```
 holistichubpro/
-│
 ├── app/
 │   ├── Events/
-│   │   ├── EventServiceProvider.php
 │   │   ├── PermissionChanged.php
 │   │   └── RoleChanged.php
 │   ├── Http/
 │   │   ├── Controllers/
+│   │   │   ├── Admin/
+│   │   │   │   ├── AuditLogController.php
+│   │   │   │   ├── BranchController.php
+│   │   │   │   ├── PermissionController.php
+│   │   │   │   ├── RoleController.php
+│   │   │   │   ├── UserController.php
+│   │   │   │   └── Settings/
+│   │   │   │       ├── BackupController.php
+│   │   │   │       ├── CurrencyController.php
+│   │   │   │       ├── PaymentTypeController.php
+│   │   │   │       ├── SettingsOptionsController.php
+│   │   │   │       ├── SiteSettingController.php
+│   │   │   │       ├── SmtpSettingController.php
+│   │   │   │       ├── StoreSettingController.php
+│   │   │   │       ├── TaxController.php
+│   │   │   │       ├── TaxGroupController.php
+│   │   │   │       └── UnitController.php
 │   │   │   ├── AuthController.php
-│   │   │   ├── Controller.php
-│   │   │   └── Admin/
-│   │   │       ├── UserController.php
-│   │   │       ├── RoleController.php
-│   │   │       ├── PermissionController.php
-│   │   │       ├── AuditLogController.php
-│   │   │       └── BranchController.php
+│   │   │   └── Controller.php
 │   │   └── Middleware/
 │   │       └── EnsurePasswordIsNotExpired.php
 │   ├── Listeners/
 │   │   ├── LogPermissionChange.php
 │   │   └── LogRoleChange.php
 │   ├── Models/
-│   │   ├── User.php
-│   │   ├── Branch.php
-│   │   ├── Role.php
-│   │   ├── Permission.php
 │   │   ├── AuditLog.php
-│   │   └── PasswordHistory.php
+│   │   ├── Branch.php
+│   │   ├── Currency.php
+│   │   ├── PasswordHistory.php
+│   │   ├── PaymentType.php
+│   │   ├── Permission.php
+│   │   ├── Role.php
+│   │   ├── SiteSetting.php
+│   │   ├── SmtpSetting.php
+│   │   ├── StoreSetting.php
+│   │   ├── Tax.php
+│   │   ├── TaxGroup.php
+│   │   ├── Unit.php
+│   │   └── User.php
 │   ├── Policies/
 │   │   ├── AuditLogPolicy.php
+│   │   ├── CurrencyPolicy.php
+│   │   ├── PaymentTypePolicy.php
 │   │   ├── PermissionPolicy.php
 │   │   ├── RolePolicy.php
+│   │   ├── SiteSettingPolicy.php
+│   │   ├── SmtpSettingPolicy.php
+│   │   ├── StoreSettingPolicy.php
+│   │   ├── TaxGroupPolicy.php
+│   │   ├── TaxPolicy.php
+│   │   ├── UnitPolicy.php
 │   │   └── UserPolicy.php
 │   ├── Providers/
 │   │   ├── AppServiceProvider.php
@@ -96,9 +121,8 @@ holistichubpro/
 │   ├── Rules/
 │   │   ├── NotRecentPassword.php
 │   │   └── SalonPassword.php
-│   ├── Services/
-│   │   └── AuditLogService.php
-├── bootstrap/
+│   └── Services/
+│       └── AuditLogService.php
 ├── config/
 │   ├── app.php
 │   ├── auth.php
@@ -118,7 +142,15 @@ holistichubpro/
 │   │   ├── 2026_01_01_000001_create_cache_jobs_tokens_tables.php
 │   │   ├── 2026_01_01_000002_create_branches_users_password_histories_tables.php
 │   │   ├── 2026_01_01_000003_create_permission_tables_with_branch_support.php
-│   │   └── 2026_01_01_000004_create_audit_logs_table.php
+│   │   ├── 2026_01_01_000004_create_audit_logs_table.php
+│   │   ├── 2026_04_12_221432_create_site_settings_table.php
+│   │   ├── 2026_04_12_221438_create_store_settings_table.php
+│   │   ├── 2026_04_12_221439_create_smtp_settings_table.php
+│   │   ├── 2026_04_12_221440_create_taxes_table.php
+│   │   ├── 2026_04_12_221441_create_tax_groups_table.php
+│   │   ├── 2026_04_12_221443_create_units_table.php
+│   │   ├── 2026_04_12_221444_create_payment_types_table.php
+│   │   └── 2026_04_12_221445_create_currencies_table.php
 │   └── seeders/
 │       ├── DatabaseSeeder.php
 │       └── InitialSetupSeeder.php
@@ -146,7 +178,8 @@ holistichubpro-frontend/
 │   │   ├── roles.js
 │   │   ├── permissions.js
 │   │   ├── branches.js
-│   │   └── audit.js
+│   │   ├── audit.js
+│   │   └── settings.js
 │   ├── components/
 │   │   ├── auth/
 │   │   │   ├── ChangePasswordView.vue
@@ -178,7 +211,8 @@ holistichubpro-frontend/
 │   ├── stores/
 │   │   ├── auth.js
 │   │   ├── branch.js
-│   │   └── ui.js
+│   │   ├── ui.js
+│   │   └── settings.js
 │   ├── views/
 │   │   ├── admin/
 │   │   │   ├── users/
@@ -189,8 +223,18 @@ holistichubpro-frontend/
 │   │   │   │   └── PermissionsListView.vue
 │   │   │   ├── branches/
 │   │   │   │   └── BranchesListView.vue
-│   │   │   └── audit/
-│   │   │       └── AuditLogsView.vue
+│   │   │   ├── audit/
+│   │   │   │   └── AuditLogsView.vue
+│   │   │   └── settings/
+│   │   │       ├── SettingsView.vue
+│   │   │       ├── SiteSettingsView.vue
+│   │   │       ├── StoreSettingsView.vue
+│   │   │       ├── SmtpSettingsView.vue
+│   │   │       ├── TaxListView.vue
+│   │   │       ├── UnitsListView.vue
+│   │   │       ├── PaymentTypesView.vue
+│   │   │       ├── CurrenciesView.vue
+│   │   │       └── DatabaseBackupView.vue
 │   │   ├── auth/
 │   │   │   ├── ChangePasswordView.vue
 │   │   │   ├── EmailVerificationView.vue
