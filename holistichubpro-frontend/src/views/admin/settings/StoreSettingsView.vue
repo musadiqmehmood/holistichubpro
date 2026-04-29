@@ -2,21 +2,22 @@
     <div>
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-neutral-90">Store Settings</h1>
-            <p class="mt-1 text-sm text-neutral-60">Configure store information and localization preferences.</p>
+            <p class="mt-1 text-sm text-neutral-50">Configure store information and localization preferences.</p>
         </div>
 
-        <div class="mb-6 border-b border-neutral-20">
-            <nav class="-mb-px flex gap-6">
+        <!-- Material Design Tabs -->
+        <div class="mb-8 border-b border-gray-200">
+            <nav class="-mb-px flex gap-8" aria-label="Store settings tabs">
                 <button
                     v-for="tab in tabs"
                     :key="tab.id"
                     type="button"
                     @click="activeTab = tab.id"
-                    class="whitespace-nowrap border-b-2 pb-3 px-1 text-sm font-medium transition-colors"
+                    class="relative pb-4 text-sm font-medium transition-colors"
                     :class="[
                         activeTab === tab.id
-                            ? 'border-primary-600 text-primary-700'
-                            : 'border-transparent text-neutral-60 hover:border-neutral-30 hover:text-neutral-70',
+                            ? 'text-[var(--primary-color)] border-b-2 border-[var(--primary-color)]'
+                            : 'text-gray-500 hover:text-gray-700 hover:border-gray-300'
                     ]"
                 >
                     {{ tab.label }}
@@ -35,6 +36,7 @@
             <div v-show="activeTab === 'general'">
                 <AppCard>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                        <!-- All fields remain as before, only toggle is updated to AppToggle -->
                         <AppFormField label="Store Code" id="store_code" required :error="errors.store_code?.[0]">
                             <input id="store_code" v-model="form.store_code" type="text" name="store_code" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20" placeholder="HHP-001" required />
                         </AppFormField>
@@ -98,16 +100,11 @@
                             </div>
                         </AppFormField>
 
-                        <!-- Show Signature on Invoice Toggle -->
+                        <!-- Show Signature Toggle -->
                         <AppFormField label="Show Signature on Invoice" :error="errors.show_signature_on_invoice?.[0]">
-                            <label class="inline-flex cursor-pointer items-center gap-3">
-                                <div class="relative">
-                                    <input type="checkbox" v-model="form.show_signature_on_invoice" name="show_signature_on_invoice" class="peer sr-only" />
-                                    <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                                    <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                                </div>
-                                <span class="text-sm text-neutral-70">{{ form.show_signature_on_invoice ? 'Enabled' : 'Disabled' }}</span>
-                            </label>
+                            <AppToggle v-model="form.show_signature_on_invoice">
+                                {{ form.show_signature_on_invoice ? 'Enabled' : 'Disabled' }}
+                            </AppToggle>
                         </AppFormField>
 
                         <!-- Signature (only when toggle on) -->
@@ -208,6 +205,7 @@ import api from '@/api/axios'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppButton from '@/components/ui/AppButton.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 defineOptions({ name: 'StoreSettingsView' })
 
@@ -227,7 +225,6 @@ const storeLogoFile = ref(null)
 const signatureFile = ref(null)
 const errors = reactive({})
 
-// Computed URLs – these will automatically update when storeSettings changes
 const storeLogoUrl = computed(() => settingsStore.storeSettings?.store_logo_url ?? null)
 const signatureUrl = computed(() => settingsStore.storeSettings?.signature_url ?? null)
 
@@ -255,7 +252,6 @@ const form = reactive({
 
 const activeCurrencies = computed(() => settingsStore.currencies.data?.filter(c => c.status) ?? [])
 
-// Populate form from store data
 function updateFormFromStore() {
     const s = settingsStore.storeSettings
     if (s) {
@@ -291,10 +287,8 @@ onMounted(async () => {
     updateFormFromStore()
 })
 
-// Watch for store changes (e.g., after update)
 watch(() => settingsStore.storeSettings, () => {
     updateFormFromStore()
-    // Clear previews after successful save
     storeLogoPreview.value = null
     signaturePreview.value = null
     storeLogoFile.value = null
@@ -344,9 +338,7 @@ async function handleSubmit() {
 
     try {
         await settingsStore.updateStoreSettings(formData)
-        // The store will be updated via the watch, but we also re-fetch to be safe
         await settingsStore.fetchStoreSettings()
-        // Clear file inputs and previews
         storeLogoFile.value = null
         signatureFile.value = null
         storeLogoPreview.value = null

@@ -3,18 +3,33 @@ import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { settingsApi, downloadCsv } from '@/api/settings'
 import { useUiStore } from '@/stores/ui'
-import { useAuthStore } from '@/stores/auth' // ADDED: To access user branch context
+import { useAuthStore } from '@/stores/auth'
 
 export const useSettingsStore = defineStore('settings', () => {
     const uiStore = useUiStore()
-    const authStore = useAuthStore() // ADDED
+    const authStore = useAuthStore()
 
     // Singleton settings
-    // CHANGE: Initialize from localStorage so the UI (Logo, Name, Formats)
-    // updates immediately on page load without waiting for API.
     const siteSettings  = ref(JSON.parse(localStorage.getItem('site_settings')) || {})
     const storeSettings = ref(JSON.parse(localStorage.getItem('store_settings')) || {})
     const smtpSettings  = ref({})
+
+    // Dynamic UI settings (appearance, behavior, etc.)
+    const dynamicSettings = ref({
+        storeName: 'HolisticHub Pro',
+        logoUrl: null,
+        primaryColor: '#6366f1',
+        secondaryColor: '#8b5cf6',
+        backgroundColor: '#f8fafc',
+        fontFamily: 'Montserrat, Roboto, system-ui, sans-serif',
+        showIcons: false,
+        sidebarCollapsed: false,
+        dateFormat: 'YYYY-MM-DD',
+        timeFormat: 'HH:mm',
+        currencySymbol: '$',
+        currencyPlacement: 'before',
+        decimals: 2,
+    })
 
     // Resource lists
     const taxes        = ref({ data: [], meta: {} })
@@ -23,12 +38,12 @@ export const useSettingsStore = defineStore('settings', () => {
     const paymentTypes = ref({ data: [], meta: {} })
     const currencies   = ref({ data: [], meta: {} })
 
-    // Filters
-    const taxFilters         = reactive({ search: '', status: '', page: 1, per_page: 15, sort_by: 'name', sort_dir: 'asc' })
-    const taxGroupFilters    = reactive({ search: '', status: '', page: 1, per_page: 15, sort_by: 'name', sort_dir: 'asc' })
-    const unitFilters        = reactive({ search: '', status: '', page: 1, per_page: 15, sort_by: 'name', sort_dir: 'asc' })
-    const paymentTypeFilters = reactive({ search: '', status: '', page: 1, per_page: 15, sort_by: 'name', sort_dir: 'asc' })
-    const currencyFilters    = reactive({ search: '', status: '', page: 1, per_page: 15, sort_by: 'name', sort_dir: 'asc' })
+    // Filters – per_page now defaults to 10 to match the UI dropdown
+    const taxFilters         = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
+    const taxGroupFilters    = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
+    const unitFilters        = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
+    const paymentTypeFilters = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
+    const currencyFilters    = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
 
     // Loading flags
     const loading = reactive({
@@ -40,14 +55,24 @@ export const useSettingsStore = defineStore('settings', () => {
     const importing = ref(false)
     const exporting = ref(false)
 
-    // Generic fetch for standard paginated responses
+    // ─────────────────────────────────────────────────────────────────
+    // Helper: Generic fetch for paginated lists
+    // ─────────────────────────────────────────────────────────────────
     async function fetchList(key, apiFn, filters, store) {
         loading[key] = true
         try {
             const res = await apiFn({ ...filters })
+            const responseData = res.data
             store.value = {
-                data: res.data.data ?? res.data,
-                meta: res.data.meta ?? {},
+                data: responseData.data ?? responseData,
+                meta: {
+                    current_page: responseData.current_page ?? 1,
+                    last_page:    responseData.last_page    ?? 1,
+                    total:        responseData.total        ?? 0,
+                    from:         responseData.from         ?? 0,
+                    to:           responseData.to           ?? 0,
+                    per_page:     responseData.per_page     ?? filters.per_page ?? 10,
+                }
             }
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: e.response?.data?.message ?? 'Failed to load data' })
@@ -56,15 +81,21 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Specialised fetch for tax groups
+    // Specialised fetch for tax groups (returns { data: paginator, available_taxes })
     const fetchTaxGroups = async () => {
         loading.taxGroups = true
         try {
             const res = await settingsApi.getTaxGroups({ ...taxGroupFilters })
-            const paginator = res.data.data
+            const paginator = res.data.data               // the LengthAwarePaginator object
             taxGroups.value = {
-                data: paginator.data ?? [],
-                meta: paginator.meta ?? {},
+                data: paginator?.data ?? [],
+                meta: {
+                    current_page: paginator?.current_page ?? 1,
+                    last_page:    paginator?.last_page    ?? 1,
+                    total:        paginator?.total        ?? 0,
+                    from:         paginator?.from         ?? 0,
+                    to:           paginator?.to           ?? 0,
+                },
             }
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: e.response?.data?.message ?? 'Failed to load tax groups' })
@@ -91,7 +122,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Import/Export helpers
+    // Import/Export helpers (unchanged)
     async function importItems(apiFn, file, refetchFn) {
         importing.value = true
         try {
@@ -119,19 +150,16 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // ── UPDATED: Site Settings ──────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Site Settings (unchanged)
+    // ─────────────────────────────────────────────────────────────────
     const fetchSiteSettings = async () => {
         loading.site = true
         try {
             const res = await settingsApi.getSite()
             siteSettings.value = res.data
-            // CHANGE: Persist to localStorage for immediate UI updates (Logo/Name)
             localStorage.setItem('site_settings', JSON.stringify(res.data))
-
-            // CHANGE: Update document title dynamically
-            if (res.data.site_name) {
-                document.title = res.data.site_name
-            }
+            if (res.data.site_name) document.title = res.data.site_name
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load site settings' })
         } finally {
@@ -140,30 +168,24 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     const updateSiteSettings = async (form) => {
-        // CHANGE: Use saveItem but also update local state and storage
         const data = await saveItem(() => settingsApi.updateSite(form), 'Site settings saved')
         siteSettings.value = data
         localStorage.setItem('site_settings', JSON.stringify(data))
-
         if (data.site_name) document.title = data.site_name
         return data
     }
 
-    // ── UPDATED: Store Settings (Branch Dependent) ──────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Store Settings (Branch Dependent) – unchanged
+    // ─────────────────────────────────────────────────────────────────
     const fetchStoreSettings = async (branchId = null) => {
         loading.store = true
         try {
-            // CHANGE: Use provided branchId or fallback to user's current branch
             const targetBranchId = branchId || authStore.user?.branch_id
             const res = await settingsApi.getStore({ branch_id: targetBranchId })
-
-            // CHANGE: API now returns { data: {...}, options: {...} }
             const data = res.data.data || res.data
             storeSettings.value = data
-
-            // CHANGE: Persist to localStorage so formatters can use it immediately
             localStorage.setItem('store_settings', JSON.stringify(data))
-
             return res.data
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load store settings' })
@@ -174,14 +196,15 @@ export const useSettingsStore = defineStore('settings', () => {
 
     const updateStoreSettings = async (form) => {
         const res = await saveItem(() => settingsApi.updateStore(form), 'Store settings saved')
-        // CHANGE: Update local state and storage with the returned data
         const data = res.data || res
         storeSettings.value = data
         localStorage.setItem('store_settings', JSON.stringify(data))
         return res
     }
 
-    // ── SMTP Settings ───────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // SMTP Settings – unchanged
+    // ─────────────────────────────────────────────────────────────────
     const fetchSmtpSettings = async () => {
         loading.smtp = true
         try {
@@ -209,7 +232,41 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // ── Resource CRUD ───────────────────────────────────────────────────────
+    // ─────────────────────────────────────────────────────────────────
+    // Dynamic UI Settings – unchanged
+    // ─────────────────────────────────────────────────────────────────
+    const fetchDynamicSettings = async () => {
+        try {
+            const stored = localStorage.getItem('dynamic_settings')
+            if (stored) Object.assign(dynamicSettings.value, JSON.parse(stored))
+            applyThemeVariables()
+        } catch (e) {
+            console.error('Failed to load dynamic settings:', e)
+        }
+    }
+
+    const updateDynamicSetting = async (key, value) => {
+        dynamicSettings.value[key] = value
+        localStorage.setItem('dynamic_settings', JSON.stringify(dynamicSettings.value))
+        if (['primaryColor', 'secondaryColor', 'backgroundColor', 'fontFamily'].includes(key)) {
+            applyThemeVariables()
+        }
+    }
+
+    const applyThemeVariables = () => {
+        document.documentElement.style.setProperty('--primary-color', dynamicSettings.value.primaryColor)
+        document.documentElement.style.setProperty('--secondary-color', dynamicSettings.value.secondaryColor)
+        document.documentElement.style.setProperty('--background-color', dynamicSettings.value.backgroundColor)
+        document.documentElement.style.setProperty('--font-family', dynamicSettings.value.fontFamily)
+    }
+
+    const toggleSidebar = () => {
+        updateDynamicSetting('sidebarCollapsed', !dynamicSettings.value.sidebarCollapsed)
+    }
+
+    // ─────────────────────────────────────────────────────────────────
+    // Resource CRUD – now all fetch actions use the corrected fetchList (with meta)
+    // ─────────────────────────────────────────────────────────────────
     const fetchTaxes      = () => fetchList('taxes', settingsApi.getTaxes, taxFilters, taxes)
     const createTax       = (d) => saveItem(() => settingsApi.createTax(d), 'Tax created').then(fetchTaxes)
     const updateTax       = (id, d) => saveItem(() => settingsApi.updateTax(id, d), 'Tax updated').then(fetchTaxes)
@@ -242,8 +299,11 @@ export const useSettingsStore = defineStore('settings', () => {
     const importCurrencies     = (file) => importItems(settingsApi.importCurrencies, file, fetchCurrencies)
     const exportCurrencies     = () => exportItems(settingsApi.exportCurrencies, 'currencies.csv', currencyFilters)
 
+    // ─────────────────────────────────────────────────────────────────
+    // Return everything
+    // ─────────────────────────────────────────────────────────────────
     return {
-        siteSettings, storeSettings, smtpSettings,
+        siteSettings, storeSettings, smtpSettings, dynamicSettings,
         taxes, taxGroups, units, paymentTypes, currencies,
         taxFilters, taxGroupFilters, unitFilters, paymentTypeFilters, currencyFilters,
         loading, saving, importing, exporting,
@@ -252,10 +312,15 @@ export const useSettingsStore = defineStore('settings', () => {
         fetchStoreSettings, updateStoreSettings,
         fetchSmtpSettings, updateSmtpSettings, testSmtp,
 
+        fetchDynamicSettings, updateDynamicSetting, applyThemeVariables, toggleSidebar,
+
         fetchTaxes, createTax, updateTax, deleteTax, importTaxes, exportTaxes,
         fetchTaxGroups, createTaxGroup, updateTaxGroup, deleteTaxGroup,
+
         fetchUnits, createUnit, updateUnit, deleteUnit, importUnits, exportUnits,
+
         fetchPaymentTypes, createPaymentType, updatePaymentType, deletePaymentType, importPaymentTypes, exportPaymentTypes,
+
         fetchCurrencies, createCurrency, updateCurrency, deleteCurrency, importCurrencies, exportCurrencies,
     }
 })

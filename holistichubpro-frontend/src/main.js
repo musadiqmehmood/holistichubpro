@@ -1,10 +1,12 @@
+// src/main.js
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
-import './index.css' // Tailwind
+import './style.css' // Updated design tokens
+import { useSettingsStore } from '@/stores/settings'
 
-// Optionally register UI components globally
+// Global UI components (registered for convenience)
 import AppButton from '@/components/ui/AppButton.vue'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppModal from '@/components/ui/AppModal.vue'
@@ -16,10 +18,14 @@ import AppAlert from '@/components/ui/AppAlert.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
 
 const app = createApp(App)
-app.use(createPinia())
+const pinia = createPinia()
+app.use(pinia)
 app.use(router)
 
-// Global registration for convenience (or you can import per component)
+// Preload dynamic UI settings (theme colors, logo, font, etc.) before the first render
+useSettingsStore().fetchDynamicSettings()
+
+// Global component registrations
 app.component('AppButton', AppButton)
 app.component('AppCard', AppCard)
 app.component('AppModal', AppModal)

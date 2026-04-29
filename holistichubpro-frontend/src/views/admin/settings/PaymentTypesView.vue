@@ -1,13 +1,11 @@
 <template>
     <div>
-        <!-- Page Header -->
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-neutral-90">Payment Types</h1>
             <p class="mt-1 text-sm text-neutral-50">Manage payment methods accepted at your store.</p>
         </div>
 
         <AppCard :padding="'none'">
-            <!-- Card Header -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-neutral-10">
                 <h2 class="text-base font-semibold text-neutral-80">Payment Types</h2>
                 <div class="flex flex-wrap gap-2">
@@ -25,7 +23,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="flex flex-wrap gap-3 px-6 py-4 border-b border-neutral-10 bg-neutral-5/50">
                 <input
                     v-model="settingsStore.paymentTypeFilters.search"
@@ -47,12 +44,10 @@
                 </select>
             </div>
 
-            <!-- Loading skeleton -->
             <div v-if="settingsStore.loading.paymentTypes" class="p-6 space-y-3 animate-pulse">
                 <div v-for="i in 5" :key="i" class="h-10 bg-neutral-10 rounded-lg"></div>
             </div>
 
-            <!-- Table -->
             <AppTable v-else :columns="columns" :data="settingsStore.paymentTypes.data">
                 <template #status="{ item }">
                     <AppBadge :color="item.status ? 'success' : 'gray'" :text="item.status ? 'Active' : 'Inactive'" />
@@ -79,7 +74,7 @@
                         </AppButton>
                     </div>
                 </template>
-                <template v-if="settingsStore.paymentTypes.meta?.last_page > 1" #footer>
+                <template v-if="settingsStore.paymentTypes.meta?.current_page" #footer>
                     <AppPagination
                         :current-page="settingsStore.paymentTypes.meta.current_page"
                         :last-page="settingsStore.paymentTypes.meta.last_page"
@@ -92,7 +87,7 @@
             </AppTable>
         </AppCard>
 
-        <!-- ── Create / Edit Modal ──────────────────────────────────────────── -->
+        <!-- Create / Edit Modal -->
         <AppModal
             :is-open="modalOpen"
             :title="form.id ? 'Edit Payment Type' : 'Add Payment Type'"
@@ -111,15 +106,11 @@
                     />
                 </AppFormField>
 
+                <!-- ✅ NEW TOGGLE -->
                 <AppFormField label="Status">
-                    <label class="inline-flex cursor-pointer items-center gap-3">
-                        <div class="relative">
-                            <input type="checkbox" v-model="form.status" class="peer sr-only" />
-                            <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                        </div>
-                        <span class="text-sm text-neutral-70">{{ form.status ? 'Active' : 'Inactive' }}</span>
-                    </label>
+                    <AppToggle v-model="form.status">
+                        {{ form.status ? 'Active' : 'Inactive' }}
+                    </AppToggle>
                 </AppFormField>
             </form>
 
@@ -137,7 +128,7 @@
             </template>
         </AppModal>
 
-        <!-- ── Delete Confirmation Modal ────────────────────────────────────── -->
+        <!-- Delete Confirmation Modal -->
         <AppModal
             :is-open="deleteModalOpen"
             title="Confirm Delete"
@@ -153,7 +144,6 @@
             </p>
         </AppModal>
 
-        <!-- Hidden CSV import input -->
         <input ref="importInput" type="file" class="hidden" accept=".csv,.txt" @change="handleImportFile" />
     </div>
 </template>
@@ -169,6 +159,7 @@ import AppBadge from '@/components/ui/AppBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 defineOptions({ name: 'PaymentTypesView' })
 
@@ -180,7 +171,6 @@ const columns = [
     { key: 'status', label: 'Status' },
 ]
 
-// ── Modal state ───────────────────────────────────────────────────────────────
 const modalOpen       = ref(false)
 const deleteModalOpen = ref(false)
 const deleteTarget    = ref(null)
@@ -227,7 +217,6 @@ async function handleDelete() {
     } catch {}
 }
 
-// ── Import ────────────────────────────────────────────────────────────────────
 function openImportDialog() {
     importInput.value.value = ''
     importInput.value.click()
@@ -238,7 +227,6 @@ async function handleImportFile(event) {
     if (file) await settingsStore.importPaymentTypes(file)
 }
 
-// ── Debounce & fetch ──────────────────────────────────────────────────────────
 let debounceTimer = null
 
 function debouncedFetch() {
@@ -253,4 +241,3 @@ function fetchNow() {
 
 onMounted(() => settingsStore.fetchPaymentTypes())
 </script>
-

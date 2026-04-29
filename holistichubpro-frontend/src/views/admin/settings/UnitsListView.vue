@@ -7,7 +7,6 @@
         </div>
 
         <AppCard :padding="'none'">
-            <!-- Card Header -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-neutral-10">
                 <h2 class="text-base font-semibold text-neutral-80">Units</h2>
                 <div class="flex flex-wrap gap-2">
@@ -25,7 +24,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="flex flex-wrap gap-3 px-6 py-4 border-b border-neutral-10 bg-neutral-5/50">
                 <input
                     v-model="settingsStore.unitFilters.search"
@@ -47,12 +45,10 @@
                 </select>
             </div>
 
-            <!-- Loading skeleton -->
             <div v-if="settingsStore.loading.units" class="p-6 space-y-3 animate-pulse">
                 <div v-for="i in 5" :key="i" class="h-10 bg-neutral-10 rounded-lg"></div>
             </div>
 
-            <!-- Table -->
             <AppTable v-else :columns="columns" :data="settingsStore.units.data">
                 <template #description="{ item }">
                     <span class="text-neutral-50 text-sm">{{ item.description || '—' }}</span>
@@ -82,20 +78,20 @@
                         </AppButton>
                     </div>
                 </template>
-                <template v-if="settingsStore.units.meta?.last_page > 1" #footer>
+                <template v-if="settingsStore.units.meta?.current_page" #footer>
                     <AppPagination
                         :current-page="settingsStore.units.meta.current_page"
                         :last-page="settingsStore.units.meta.last_page"
                         :total="settingsStore.units.meta.total"
                         :from="settingsStore.units.meta.from"
                         :to="settingsStore.units.meta.to"
-                        @change="p => { settingsStore.unitFilters.page = p; fetchNow() }"
+                        @change="(p) => { settingsStore.unitFilters.page = p; settingsStore.fetchUnits() }"
                     />
                 </template>
             </AppTable>
         </AppCard>
 
-        <!-- ── Create / Edit Modal ──────────────────────────────────────────── -->
+        <!-- Create / Edit Modal -->
         <AppModal
             :is-open="modalOpen"
             :title="form.id ? 'Edit Unit' : 'Add Unit'"
@@ -124,15 +120,11 @@
                     />
                 </AppFormField>
 
+                <!-- ✅ NEW TOGGLE -->
                 <AppFormField label="Status">
-                    <label class="inline-flex cursor-pointer items-center gap-3">
-                        <div class="relative">
-                            <input type="checkbox" v-model="form.status" class="peer sr-only" />
-                            <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                        </div>
-                        <span class="text-sm text-neutral-70">{{ form.status ? 'Active' : 'Inactive' }}</span>
-                    </label>
+                    <AppToggle v-model="form.status">
+                        {{ form.status ? 'Active' : 'Inactive' }}
+                    </AppToggle>
                 </AppFormField>
             </form>
 
@@ -150,7 +142,7 @@
             </template>
         </AppModal>
 
-        <!-- ── Delete Confirmation Modal ────────────────────────────────────── -->
+        <!-- Delete Confirmation Modal -->
         <AppModal
             :is-open="deleteModalOpen"
             title="Confirm Delete"
@@ -166,7 +158,6 @@
             </p>
         </AppModal>
 
-        <!-- Hidden CSV import input -->
         <input ref="importInput" type="file" class="hidden" accept=".csv,.txt" @change="handleImportFile" />
     </div>
 </template>
@@ -182,6 +173,7 @@ import AppBadge from '@/components/ui/AppBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 defineOptions({ name: 'UnitsListView' })
 
@@ -194,7 +186,6 @@ const columns = [
     { key: 'status',      label: 'Status' },
 ]
 
-// ── Modal state ───────────────────────────────────────────────────────────────
 const modalOpen       = ref(false)
 const deleteModalOpen = ref(false)
 const deleteTarget    = ref(null)
@@ -241,7 +232,6 @@ async function handleDelete() {
     } catch {}
 }
 
-// ── Import ────────────────────────────────────────────────────────────────────
 function openImportDialog() {
     importInput.value.value = ''
     importInput.value.click()
@@ -252,7 +242,6 @@ async function handleImportFile(event) {
     if (file) await settingsStore.importUnits(file)
 }
 
-// ── Debounce & fetch ──────────────────────────────────────────────────────────
 let debounceTimer = null
 
 function debouncedFetch() {
@@ -267,4 +256,3 @@ function fetchNow() {
 
 onMounted(() => settingsStore.fetchUnits())
 </script>
-

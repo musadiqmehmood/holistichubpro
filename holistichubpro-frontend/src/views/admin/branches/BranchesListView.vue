@@ -82,7 +82,7 @@
             />
         </AppCard>
 
-        <!-- Create/Edit Modal (unchanged) -->
+        <!-- Create/Edit Modal -->
         <AppModal
             :is-open="showModal"
             :title="editingBranch ? 'Edit Branch' : 'Create Branch'"
@@ -91,7 +91,6 @@
             @confirm="handleSubmit"
         >
             <form @submit.prevent class="space-y-4">
-                <!-- form fields – same as before -->
                 <AppFormField label="Name" required :error="errors.name">
                     <input v-model="form.name" type="text" required class="w-full border rounded-lg px-4 py-2" />
                 </AppFormField>
@@ -149,11 +148,11 @@
                     </div>
                 </AppFormField>
 
+                <!-- ✅ NEW TOGGLE -->
                 <AppFormField label="Status">
-                    <label class="flex items-center gap-2">
-                        <input type="checkbox" v-model="form.is_active" class="rounded border-neutral-30 text-primary-600" />
-                        <span>Active</span>
-                    </label>
+                    <AppToggle v-model="form.is_active">
+                        {{ form.is_active ? 'Active' : 'Inactive' }}
+                    </AppToggle>
                 </AppFormField>
             </form>
         </AppModal>
@@ -190,6 +189,7 @@ import AppBadge from '@/components/ui/AppBadge.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 const authStore = useAuthStore()
 const uiStore = useUiStore()
@@ -244,8 +244,6 @@ const fetchBranches = async (page = 1) => {
         const params = { page, per_page: pagination.value.per_page || 10 }
         const response = await branchesApi.getAll(params)
         const data = response.data
-
-        // Laravel paginator structure: { data: [], current_page, last_page, total, from, to, per_page }
         branches.value = data.data || []
         pagination.value = {
             current_page: data.current_page || 1,

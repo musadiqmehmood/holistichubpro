@@ -1,123 +1,183 @@
 <template>
-    <div class="min-h-screen flex items-center justify-center bg-gray-60">
-        <div class="max-w-md w-full space-y-8 p-8">
-            <div>
-                <h2 class="text-center text-3xl font-bold text-gray-900">Change Password</h2>
-                <p class="mt-2 text-center text-sm text-gray-600">
-                    {{ isExpired ? 'Your password has expired. Please create a new one.' : 'Update your password for security' }}
+    <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-[var(--background-color)] p-4">
+        <AppCard padding="large" class="w-full max-w-md">
+            <div class="text-center mb-6">
+                <h2 class="text-2xl font-bold text-neutral-90">Change Password</h2>
+                <p class="mt-2 text-sm text-neutral-50">
+                    {{ isForcedChange ? 'Your password has expired. Please create a new one.' : 'Update your password for security' }}
                 </p>
             </div>
 
-            <form class="mt-8 space-y-6" @submit.prevent="handleSubmit">
-                <!-- Current Password (only if not forced change) -->
-                <div v-if="!isForcedChange">
-                    <label class="block text-sm font-medium text-gray-700">Current Password</label>
+            <AppAlert v-if="error" type="error" class="mb-4">{{ error }}</AppAlert>
+
+            <form @submit.prevent="handleSubmit" class="space-y-5">
+                <!-- Current Password (only if not forced) -->
+                <AppFormField v-if="!isForcedChange" label="Current Password" id="current_password" :error="errors.current_password">
                     <input
+                        id="current_password"
                         v-model="form.current_password"
                         type="password"
+                        class="block w-full border border-gray-300 rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] outline-none"
                         required
-                        class="mt-1 block w-full border border-gray-500 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                     />
-                </div>
+                </AppFormField>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">New Password</label>
+                <!-- New Password -->
+                <AppFormField label="New Password" id="new_password" :error="errors.password || passwordErrorsString">
                     <input
-                        v-model="form.new_password"
+                        id="new_password"
+                        v-model="form.password"
                         type="password"
+                        class="block w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] outline-none"
+                        :class="passwordErrorsString ? 'border-red-300' : 'border-gray-300'"
                         required
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                     />
-                    <!-- ✅ FIXED: Password strength indicator -->
-                    <PasswordStrength :password="form.new_password" />
+                </AppFormField>
+
+                <!-- Password Strength Meter -->
+                <div class="mt-2">
+                    <div class="flex gap-1 mb-2">
+                        <div
+                            v-for="i in 5"
+                            :key="i"
+                            class="h-1 flex-1 rounded-full transition-colors"
+                            :class="i <= strengthScore ? strengthColor : 'bg-gray-200'"
+                        />
+                    </div>
+                    <ul class="space-y-1 text-xs text-gray-500">
+                        <li :class="checks.hasLength ? 'text-emerald-600' : ''">✓ At least 8 characters</li>
+                        <li :class="checks.hasUpper ? 'text-emerald-600' : ''">✓ One uppercase letter</li>
+                        <li :class="checks.hasLower ? 'text-emerald-600' : ''">✓ One lowercase letter</li>
+                        <li :class="checks.hasNumber ? 'text-emerald-600' : ''">✓ One number</li>
+                        <li :class="checks.hasSpecial ? 'text-emerald-600' : ''">✓ One special character (e.g., @, #, $, %, ^, &, *, !)</li>
+                    </ul>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">Confirm Password</label>
+                <!-- Confirm Password -->
+                <AppFormField label="Confirm Password" id="password_confirmation" :error="errors.password_confirmation">
                     <input
-                        v-model="form.new_password_confirmation"
+                        id="password_confirmation"
+                        v-model="form.password_confirmation"
                         type="password"
+                        class="block w-full border rounded-lg px-4 py-2.5 text-sm focus:ring-2 focus:ring-[var(--primary-color)] focus:border-[var(--primary-color)] outline-none"
+                        :class="confirmMismatch ? 'border-red-300' : 'border-gray-300'"
                         required
-                        class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-primary-500 focus:border-primary-500"
                     />
-                    <p v-if="!passwordsMatch" class="mt-1 text-sm text-red-600">Passwords do not match</p>
-                </div>
+                    <p v-if="confirmMismatch" class="mt-1 text-xs text-red-500">Passwords do not match</p>
+                </AppFormField>
 
-                <div v-if="error" class="text-red-600 text-sm bg-red-50 p-3 rounded">{{ error }}</div>
-
-                <button
-                    type="submit"
-                    :disabled="!isValid || loading"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 disabled:opacity-50"
-                >
-                    <svg v-if="loading" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    {{ loading ? 'Changing...' : 'Change Password' }}
-                </button>
+                <AppButton type="submit" variant="filled" color="primary" class="w-full" :loading="loading" :disabled="!isSubmitEnabled">
+                    Change Password
+                </AppButton>
             </form>
-        </div>
+        </AppCard>
     </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { ref, reactive, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import PasswordStrength from '@/components/common/PasswordStrength.vue'
+import AppCard from '@/components/ui/AppCard.vue'
+import AppButton from '@/components/ui/AppButton.vue'
+import AppFormField from '@/components/ui/AppFormField.vue'
+import AppAlert from '@/components/ui/AppAlert.vue'
 
 const router = useRouter()
-const route = useRoute()
 const authStore = useAuthStore()
 
-const form = ref({
+const form = reactive({
     current_password: '',
-    new_password: '',
-    new_password_confirmation: ''
+    password: '',
+    password_confirmation: '',
 })
 
 const loading = ref(false)
 const error = ref('')
+const errors = reactive({})
 
-// ✅ FIXED: Check if password change is forced
-const isExpired = computed(() => authStore.requiresPasswordChange)
+// Determine if this is a forced change (password expired)
 const isForcedChange = computed(() => authStore.requiresPasswordChange)
 
-const passwordsMatch = computed(() => {
-    return !form.value.new_password_confirmation ||
-        form.value.new_password === form.value.new_password_confirmation
+// Password strength checks
+const checks = computed(() => {
+    const pwd = form.password || ''
+    return {
+        hasLength: pwd.length >= 8,
+        hasUpper: /[A-Z]/.test(pwd),
+        hasLower: /[a-z]/.test(pwd),
+        hasNumber: /[0-9]/.test(pwd),
+        hasSpecial: /[^A-Za-z0-9]/.test(pwd),
+    }
 })
 
-// ✅ FIXED: Password validation
-const isValid = computed(() => {
-    const pwd = form.value.new_password
-    const hasMinLength = pwd.length >= 8
-    const hasUpper = /[A-Z]/.test(pwd)
-    const hasLower = /[a-z]/.test(pwd)
-    const hasNumber = /[0-9]/.test(pwd)
-    const hasSpecial = /[@$!%*?&]/.test(pwd)
+const strengthScore = computed(() => {
+    const { hasLength, hasUpper, hasLower, hasNumber, hasSpecial } = checks.value
+    let score = 0
+    if (hasLength) score++
+    if (hasUpper) score++
+    if (hasLower) score++
+    if (hasNumber) score++
+    if (hasSpecial) score++
+    return score
+})
 
-    return hasMinLength && hasUpper && hasLower && hasNumber && hasSpecial && passwordsMatch.value
+const strengthColor = computed(() => {
+    const colors = ['bg-red-500', 'bg-orange-500', 'bg-yellow-500', 'bg-blue-500', 'bg-emerald-500']
+    return colors[strengthScore.value - 1] || 'bg-gray-200'
+})
+
+const passwordErrorsString = computed(() => {
+    const pwd = form.password
+    if (!pwd) return ''
+    const errs = []
+    if (pwd.length < 8) errs.push('Min 8 characters')
+    if (!/[A-Z]/.test(pwd)) errs.push('No uppercase')
+    if (!/[a-z]/.test(pwd)) errs.push('No lowercase')
+    if (!/[0-9]/.test(pwd)) errs.push('No number')
+    if (!/[^A-Za-z0-9]/.test(pwd)) errs.push('No special char')
+    return errs.join(', ')
+})
+
+const confirmMismatch = computed(() => {
+    return form.password_confirmation && form.password !== form.password_confirmation
+})
+
+const isSubmitEnabled = computed(() => {
+    const pwdValid = strengthScore.value === 5
+    const confirmValid = form.password && form.password === form.password_confirmation
+    if (isForcedChange.value) return pwdValid && confirmValid
+    return form.current_password.length > 0 && pwdValid && confirmValid
 })
 
 const handleSubmit = async () => {
     loading.value = true
     error.value = ''
+    Object.keys(errors).forEach(k => delete errors[k])
 
     try {
         const result = await authStore.changePassword({
-            current_password: form.value.current_password,
-            password: form.value.new_password,
-            password_confirmation: form.value.new_password_confirmation
+            current_password: form.current_password,
+            password: form.password,
+            password_confirmation: form.password_confirmation,
         })
+
         if (result.success) {
-            router.push('/dashboard')
+            if (result.requiresRelogin) {
+                router.push('/login')
+            } else {
+                router.push('/dashboard')
+            }
         } else {
             error.value = result.error || 'Failed to change password'
         }
     } catch (err) {
-        error.value = err.response?.data?.message || 'An error occurred'
+        if (err.response?.data?.errors) {
+            Object.assign(errors, err.response.data.errors)
+            error.value = Object.values(err.response.data.errors).flat().join(', ')
+        } else {
+            error.value = err.response?.data?.message || 'An error occurred'
+        }
     } finally {
         loading.value = false
     }

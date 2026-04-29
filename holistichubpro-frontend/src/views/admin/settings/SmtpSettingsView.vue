@@ -15,18 +15,12 @@
             <form v-else @submit.prevent="handleSubmit" class="space-y-6">
                 <!-- Enable SMTP Toggle -->
                 <AppFormField label="Enable SMTP" :error="errors.status?.[0]">
-                    <label class="inline-flex cursor-pointer items-center gap-3">
-                        <div class="relative">
-                            <input type="checkbox" v-model="form.status" class="peer sr-only" />
-                            <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                        </div>
-                        <span class="text-sm font-medium text-neutral-70">{{ form.status ? 'Enabled' : 'Disabled' }}</span>
-                    </label>
+                    <AppToggle v-model="form.status">
+                        {{ form.status ? 'Enabled' : 'Disabled' }}
+                    </AppToggle>
                 </AppFormField>
 
                 <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                    <!-- Host -->
                     <AppFormField label="SMTP Host" id="host" required :error="errors.host?.[0]">
                         <input
                             id="host"
@@ -38,7 +32,6 @@
                         />
                     </AppFormField>
 
-                    <!-- Port -->
                     <AppFormField label="SMTP Port" id="port" required :error="errors.port?.[0]">
                         <input
                             id="port"
@@ -52,7 +45,6 @@
                         />
                     </AppFormField>
 
-                    <!-- Username -->
                     <AppFormField label="Username" id="username" required :error="errors.username?.[0]">
                         <input
                             id="username"
@@ -64,7 +56,6 @@
                         />
                     </AppFormField>
 
-                    <!-- Password — never pre-filled -->
                     <AppFormField
                         label="Password"
                         id="smtp_password"
@@ -81,9 +72,13 @@
                         />
                     </AppFormField>
 
-                    <!-- Encryption -->
                     <AppFormField label="Encryption" id="encryption" required :error="errors.encryption?.[0]">
-                        <select id="encryption" v-model="form.encryption" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm text-neutral-90 placeholder:text-neutral-40 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-neutral-10 disabled:cursor-not-allowed" required>
+                        <select
+                            id="encryption"
+                            v-model="form.encryption"
+                            class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm text-neutral-90 placeholder:text-neutral-40 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20 disabled:bg-neutral-10 disabled:cursor-not-allowed"
+                            required
+                        >
                             <option value="tls">TLS</option>
                             <option value="ssl">SSL</option>
                             <option value="none">None</option>
@@ -91,7 +86,6 @@
                     </AppFormField>
                 </div>
 
-                <!-- Actions -->
                 <div class="flex items-center justify-between border-t border-neutral-10 pt-5">
                     <AppButton
                         type="button"
@@ -123,6 +117,7 @@ import { useSettingsStore } from '@/stores/settings'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppButton from '@/components/ui/AppButton.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 defineOptions({ name: 'SmtpSettingsView' })
 
@@ -148,7 +143,7 @@ onMounted(async () => {
         form.host       = s.host       ?? ''
         form.port       = s.port       ?? 587
         form.username   = s.username   ?? ''
-        form.password   = ''  // Never pre-fill password
+        form.password   = ''
         form.encryption = s.encryption ?? 'tls'
     }
 })
@@ -164,7 +159,6 @@ async function handleSubmit() {
         encryption: form.encryption,
     }
 
-    // Only send password if user typed a non-empty, non-sentinel value
     if (form.password && form.password.trim() && form.password !== '••••••••') {
         payload.password = form.password
     }
@@ -186,4 +180,3 @@ async function handleTestEmail() {
     }
 }
 </script>
-

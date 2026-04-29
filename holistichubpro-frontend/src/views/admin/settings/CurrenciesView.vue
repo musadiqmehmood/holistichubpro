@@ -1,13 +1,11 @@
 <template>
     <div>
-        <!-- Page Header -->
         <div class="mb-6">
             <h1 class="text-2xl font-semibold text-neutral-90">Currency List</h1>
             <p class="mt-1 text-sm text-neutral-50">Manage currencies supported by your store.</p>
         </div>
 
         <AppCard :padding="'none'">
-            <!-- Card Header -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-neutral-10">
                 <h2 class="text-base font-semibold text-neutral-80">Currencies</h2>
                 <div class="flex flex-wrap gap-2">
@@ -25,7 +23,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="flex flex-wrap gap-3 px-6 py-4 border-b border-neutral-10 bg-neutral-5/50">
                 <input
                     v-model="settingsStore.currencyFilters.search"
@@ -47,12 +44,10 @@
                 </select>
             </div>
 
-            <!-- Loading skeleton -->
             <div v-if="settingsStore.loading.currencies" class="p-6 space-y-3 animate-pulse">
                 <div v-for="i in 5" :key="i" class="h-10 bg-neutral-10 rounded-lg"></div>
             </div>
 
-            <!-- Table -->
             <AppTable v-else :columns="columns" :data="settingsStore.currencies.data">
                 <template #code="{ item }">
                     <span class="rounded-md bg-neutral-10 px-2 py-0.5 font-mono text-xs font-semibold text-neutral-70">
@@ -87,20 +82,20 @@
                         </AppButton>
                     </div>
                 </template>
-                <template v-if="settingsStore.currencies.meta?.last_page > 1" #footer>
+                <template v-if="settingsStore.currencies.meta?.current_page" #footer>
                     <AppPagination
                         :current-page="settingsStore.currencies.meta.current_page"
                         :last-page="settingsStore.currencies.meta.last_page"
                         :total="settingsStore.currencies.meta.total"
                         :from="settingsStore.currencies.meta.from"
                         :to="settingsStore.currencies.meta.to"
-                        @change="p => { settingsStore.currencyFilters.page = p; fetchNow() }"
+                        @change="(p) => { settingsStore.currencyFilters.page = p; settingsStore.fetchCurrencies() }"
                     />
                 </template>
             </AppTable>
         </AppCard>
 
-        <!-- ── Create / Edit Modal ──────────────────────────────────────────── -->
+        <!-- Create / Edit Modal -->
         <AppModal
             :is-open="modalOpen"
             :title="form.id ? 'Edit Currency' : 'Add Currency'"
@@ -119,13 +114,7 @@
                     />
                 </AppFormField>
 
-                <AppFormField
-                    label="Code"
-                    id="curr_code"
-                    required
-                    :error="errors.code?.[0]"
-                    hint="3 characters, e.g. USD, EUR, GBP"
-                >
+                <AppFormField label="Code" id="curr_code" required :error="errors.code?.[0]" hint="3 characters, e.g. USD, EUR, GBP">
                     <input
                         id="curr_code"
                         v-model="form.code"
@@ -150,15 +139,11 @@
                     />
                 </AppFormField>
 
+                <!-- ✅ NEW TOGGLE -->
                 <AppFormField label="Status">
-                    <label class="inline-flex cursor-pointer items-center gap-3">
-                        <div class="relative">
-                            <input type="checkbox" v-model="form.status" class="peer sr-only" />
-                            <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                        </div>
-                        <span class="text-sm text-neutral-70">{{ form.status ? 'Active' : 'Inactive' }}</span>
-                    </label>
+                    <AppToggle v-model="form.status">
+                        {{ form.status ? 'Active' : 'Inactive' }}
+                    </AppToggle>
                 </AppFormField>
             </form>
 
@@ -176,7 +161,7 @@
             </template>
         </AppModal>
 
-        <!-- ── Delete Confirmation Modal ────────────────────────────────────── -->
+        <!-- Delete Confirmation Modal -->
         <AppModal
             :is-open="deleteModalOpen"
             title="Confirm Delete"
@@ -193,7 +178,6 @@
             </p>
         </AppModal>
 
-        <!-- Hidden CSV import input -->
         <input ref="importInput" type="file" class="hidden" accept=".csv,.txt" @change="handleImportFile" />
     </div>
 </template>
@@ -209,6 +193,7 @@ import AppBadge from '@/components/ui/AppBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 defineOptions({ name: 'CurrenciesView' })
 
@@ -222,7 +207,6 @@ const columns = [
     { key: 'status', label: 'Status' },
 ]
 
-// ── Modal state ───────────────────────────────────────────────────────────────
 const modalOpen       = ref(false)
 const deleteModalOpen = ref(false)
 const deleteTarget    = ref(null)
@@ -269,7 +253,6 @@ async function handleDelete() {
     } catch {}
 }
 
-// ── Import ────────────────────────────────────────────────────────────────────
 function openImportDialog() {
     importInput.value.value = ''
     importInput.value.click()
@@ -280,7 +263,6 @@ async function handleImportFile(event) {
     if (file) await settingsStore.importCurrencies(file)
 }
 
-// ── Debounce & fetch ──────────────────────────────────────────────────────────
 let debounceTimer = null
 
 function debouncedFetch() {
@@ -295,4 +277,3 @@ function fetchNow() {
 
 onMounted(() => settingsStore.fetchCurrencies())
 </script>
-

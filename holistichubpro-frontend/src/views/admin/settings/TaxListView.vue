@@ -10,7 +10,6 @@
         <!-- Section A: Taxes                                                  -->
         <!-- ================================================================ -->
         <AppCard :padding="'none'">
-            <!-- Card Header -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-neutral-10">
                 <h2 class="text-base font-semibold text-neutral-80">Taxes</h2>
                 <div class="flex flex-wrap gap-2">
@@ -28,7 +27,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="flex flex-wrap gap-3 px-6 py-4 border-b border-neutral-10 bg-neutral-5/50">
                 <input
                     v-model="settingsStore.taxFilters.search"
@@ -50,7 +48,6 @@
                 </select>
             </div>
 
-            <!-- Table -->
             <div v-if="settingsStore.loading.taxes" class="p-6 space-y-3 animate-pulse">
                 <div v-for="i in 5" :key="i" class="h-10 bg-neutral-10 rounded-lg"></div>
             </div>
@@ -84,14 +81,14 @@
                         </AppButton>
                     </div>
                 </template>
-                <template v-if="settingsStore.taxes.meta?.last_page > 1" #footer>
+                <template v-if="settingsStore.taxes.meta?.current_page" #footer>
                     <AppPagination
                         :current-page="settingsStore.taxes.meta.current_page"
                         :last-page="settingsStore.taxes.meta.last_page"
                         :total="settingsStore.taxes.meta.total"
                         :from="settingsStore.taxes.meta.from"
                         :to="settingsStore.taxes.meta.to"
-                        @change="p => { settingsStore.taxFilters.page = p; fetchTaxesNow() }"
+                        @change="(p) => { settingsStore.taxFilters.page = p; settingsStore.fetchTaxes() }"
                     />
                 </template>
             </AppTable>
@@ -101,7 +98,6 @@
         <!-- Section B: Tax Groups                                             -->
         <!-- ================================================================ -->
         <AppCard :padding="'none'">
-            <!-- Card Header -->
             <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-6 py-4 border-b border-neutral-10">
                 <h2 class="text-base font-semibold text-neutral-80">Tax Groups</h2>
                 <div class="flex flex-wrap gap-2">
@@ -117,7 +113,6 @@
                 </div>
             </div>
 
-            <!-- Filters -->
             <div class="flex flex-wrap gap-3 px-6 py-4 border-b border-neutral-10 bg-neutral-5/50">
                 <input
                     v-model="settingsStore.taxGroupFilters.search"
@@ -133,7 +128,6 @@
                 </select>
             </div>
 
-            <!-- Table -->
             <div v-if="settingsStore.loading.taxGroups" class="p-6 space-y-3 animate-pulse">
                 <div v-for="i in 3" :key="i" class="h-10 bg-neutral-10 rounded-lg"></div>
             </div>
@@ -179,14 +173,14 @@
                         </AppButton>
                     </div>
                 </template>
-                <template v-if="settingsStore.taxGroups.meta?.last_page > 1" #footer>
+                <template v-if="settingsStore.taxGroups.meta?.current_page" #footer>
                     <AppPagination
                         :current-page="settingsStore.taxGroups.meta.current_page"
                         :last-page="settingsStore.taxGroups.meta.last_page"
                         :total="settingsStore.taxGroups.meta.total"
                         :from="settingsStore.taxGroups.meta.from"
                         :to="settingsStore.taxGroups.meta.to"
-                        @change="p => { settingsStore.taxGroupFilters.page = p; fetchTaxGroupsNow() }"
+                        @change="(p) => { settingsStore.taxGroupFilters.page = p; settingsStore.fetchTaxGroups() }"
                     />
                 </template>
             </AppTable>
@@ -226,15 +220,11 @@
                     />
                 </AppFormField>
 
+                <!-- ✅ NEW TOGGLE -->
                 <AppFormField label="Status">
-                    <label class="inline-flex cursor-pointer items-center gap-3">
-                        <div class="relative">
-                            <input type="checkbox" v-model="taxForm.status" class="peer sr-only" />
-                            <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                        </div>
-                        <span class="text-sm text-neutral-70">{{ taxForm.status ? 'Active' : 'Inactive' }}</span>
-                    </label>
+                    <AppToggle v-model="taxForm.status">
+                        {{ taxForm.status ? 'Active' : 'Inactive' }}
+                    </AppToggle>
                 </AppFormField>
             </form>
 
@@ -296,15 +286,11 @@
                     </div>
                 </AppFormField>
 
+                <!-- ✅ NEW TOGGLE -->
                 <AppFormField label="Status">
-                    <label class="inline-flex cursor-pointer items-center gap-3">
-                        <div class="relative">
-                            <input type="checkbox" v-model="taxGroupForm.status" class="peer sr-only" />
-                            <div class="h-6 w-11 rounded-full bg-neutral-20 transition-colors peer-checked:bg-primary-600"></div>
-                            <div class="absolute left-0.5 top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform peer-checked:translate-x-5"></div>
-                        </div>
-                        <span class="text-sm text-neutral-70">{{ taxGroupForm.status ? 'Active' : 'Inactive' }}</span>
-                    </label>
+                    <AppToggle v-model="taxGroupForm.status">
+                        {{ taxGroupForm.status ? 'Active' : 'Inactive' }}
+                    </AppToggle>
                 </AppFormField>
             </form>
 
@@ -356,17 +342,16 @@ import AppBadge from '@/components/ui/AppBadge.vue'
 import AppModal from '@/components/ui/AppModal.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppPagination from '@/components/ui/AppPagination.vue'
+import AppToggle from '@/components/ui/AppToggle.vue'
 
 defineOptions({ name: 'TaxListView' })
 
 const settingsStore = useSettingsStore()
 const authStore     = useAuthStore()
 
-// ── Null-safe table data (backend may return non-array or include null items) ─
 const safeTaxes     = computed(() => Array.isArray(settingsStore.taxes.data)     ? settingsStore.taxes.data.filter(Boolean)     : [])
 const safeTaxGroups = computed(() => Array.isArray(settingsStore.taxGroups.data) ? settingsStore.taxGroups.data.filter(Boolean) : [])
 
-// ── Table columns ────────────────────────────────────────────────────────────
 const taxColumns = [
     { key: 'name',       label: 'Name' },
     { key: 'percentage', label: 'Percentage (%)' },
@@ -380,7 +365,6 @@ const taxGroupColumns = [
     { key: 'status',                 label: 'Status' },
 ]
 
-// ── Tax Modal ─────────────────────────────────────────────────────────────────
 const taxModalOpen = ref(false)
 const taxErrors    = reactive({})
 const taxForm      = reactive({ id: null, name: '', percentage: 0, status: true })
@@ -411,7 +395,6 @@ async function handleTaxSubmit() {
     }
 }
 
-// ── Tax Group Modal ───────────────────────────────────────────────────────────
 const taxGroupModalOpen = ref(false)
 const taxGroupErrors    = reactive({})
 const taxGroupForm      = reactive({ id: null, name: '', tax_ids: [], status: true })
@@ -449,7 +432,6 @@ async function handleTaxGroupSubmit() {
     }
 }
 
-// ── Delete ────────────────────────────────────────────────────────────────────
 const deleteModalOpen = ref(false)
 const deleteTarget    = ref(null)
 const deleteType      = ref('')
@@ -471,7 +453,6 @@ async function handleDelete() {
     } catch {}
 }
 
-// ── Import ────────────────────────────────────────────────────────────────────
 const importInput  = ref(null)
 const importTarget = ref('')
 
@@ -487,7 +468,6 @@ async function handleImportFile(event) {
     if (importTarget.value === 'taxes') await settingsStore.importTaxes(file)
 }
 
-// ── Debounce & fetch ──────────────────────────────────────────────────────────
 let taxTimer      = null
 let taxGroupTimer = null
 
@@ -518,4 +498,3 @@ onMounted(async () => {
     ])
 })
 </script>
-
