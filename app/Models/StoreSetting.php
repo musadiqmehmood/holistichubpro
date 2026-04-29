@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Storage; // ADDED: For storage checks
 
 class StoreSetting extends Model
 {
@@ -50,22 +50,45 @@ class StoreSetting extends Model
         return $this->belongsTo(Branch::class);
     }
 
+    /**
+     * UPDATED: Ensure the logo URL is always absolute and reliable.
+     * CHANGE: Added asset() helper and existence check for storage.
+     */
     public function getStoreLogoUrlAttribute(): ?string
     {
         if (!$this->store_logo) {
             return null;
         }
-        $relativePath = Storage::url($this->store_logo);
-        return request()->getSchemeAndHttpHost() . $relativePath;
+
+        if (filter_var($this->store_logo, FILTER_VALIDATE_URL)) {
+            return $this->store_logo;
+        }
+
+        if (Storage::disk('public')->exists($this->store_logo)) {
+            return asset('storage/' . $this->store_logo);
+        }
+
+        return null;
     }
 
+    /**
+     * UPDATED: Ensure the signature URL is always absolute.
+     */
     public function getSignatureUrlAttribute(): ?string
     {
         if (!$this->signature) {
             return null;
         }
-        $relativePath = Storage::url($this->signature);
-        return request()->getSchemeAndHttpHost() . $relativePath;
+
+        if (filter_var($this->signature, FILTER_VALIDATE_URL)) {
+            return $this->signature;
+        }
+
+        if (Storage::disk('public')->exists($this->signature)) {
+            return asset('storage/' . $this->signature);
+        }
+
+        return null;
     }
 
     public function getCurrencyObjectAttribute(): ?Currency

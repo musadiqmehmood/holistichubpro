@@ -1,14 +1,19 @@
+// src/stores/settings.js
 import { defineStore } from 'pinia'
 import { ref, reactive } from 'vue'
 import { settingsApi, downloadCsv } from '@/api/settings'
 import { useUiStore } from '@/stores/ui'
+import { useAuthStore } from '@/stores/auth' // ADDED: To access user branch context
 
 export const useSettingsStore = defineStore('settings', () => {
     const uiStore = useUiStore()
+    const authStore = useAuthStore() // ADDED
 
     // Singleton settings
-    const siteSettings  = ref({})
-    const storeSettings = ref({})
+    // CHANGE: Initialize from localStorage so the UI (Logo, Name, Formats)
+    // updates immediately on page load without waiting for API.
+    const siteSettings  = ref(JSON.parse(localStorage.getItem('site_settings')) || {})
+    const storeSettings = ref(JSON.parse(localStorage.getItem('store_settings')) || {})
     const smtpSettings  = ref({})
 
     // Resource lists
@@ -68,7 +73,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Generic save helper (does NOT automatically refetch; caller must handle)
+    // Generic save helper
     async function saveItem(apiFn, successMsg) {
         saving.value = true
         try {
@@ -86,7 +91,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Import/Export helpers (unchanged)
+    // Import/Export helpers
     async function importItems(apiFn, file, refetchFn) {
         importing.value = true
         try {
@@ -114,12 +119,19 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Site Settings
+    // ── UPDATED: Site Settings ──────────────────────────────────────────────
     const fetchSiteSettings = async () => {
         loading.site = true
         try {
             const res = await settingsApi.getSite()
             siteSettings.value = res.data
+            // CHANGE: Persist to localStorage for immediate UI updates (Logo/Name)
+            localStorage.setItem('site_settings', JSON.stringify(res.data))
+
+            // CHANGE: Update document title dynamically
+            if (res.data.site_name) {
+                document.title = res.data.site_name
+            }
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load site settings' })
         } finally {
@@ -128,18 +140,31 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     const updateSiteSettings = async (form) => {
+        // CHANGE: Use saveItem but also update local state and storage
         const data = await saveItem(() => settingsApi.updateSite(form), 'Site settings saved')
-        // Update store with the returned data (which includes the new logo URL)
         siteSettings.value = data
+        localStorage.setItem('site_settings', JSON.stringify(data))
+
+        if (data.site_name) document.title = data.site_name
         return data
     }
 
-    // Store Settings
-    const fetchStoreSettings = async () => {
+    // ── UPDATED: Store Settings (Branch Dependent) ──────────────────────────
+    const fetchStoreSettings = async (branchId = null) => {
         loading.store = true
         try {
-            const res = await settingsApi.getStore()
-            storeSettings.value = res.data.data  // Note: API returns { data: {...}, options: {...} }
+            // CHANGE: Use provided branchId or fallback to user's current branch
+            const targetBranchId = branchId || authStore.user?.branch_id
+            const res = await settingsApi.getStore({ branch_id: targetBranchId })
+
+            // CHANGE: API now returns { data: {...}, options: {...} }
+            const data = res.data.data || res.data
+            storeSettings.value = data
+
+            // CHANGE: Persist to localStorage so formatters can use it immediately
+            localStorage.setItem('store_settings', JSON.stringify(data))
+
+            return res.data
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load store settings' })
         } finally {
@@ -149,12 +174,14 @@ export const useSettingsStore = defineStore('settings', () => {
 
     const updateStoreSettings = async (form) => {
         const res = await saveItem(() => settingsApi.updateStore(form), 'Store settings saved')
-        // res contains { data: {...}, options: {...} }
-        storeSettings.value = res.data
+        // CHANGE: Update local state and storage with the returned data
+        const data = res.data || res
+        storeSettings.value = data
+        localStorage.setItem('store_settings', JSON.stringify(data))
         return res
     }
 
-    // SMTP Settings (unchanged)
+    // ── SMTP Settings ───────────────────────────────────────────────────────
     const fetchSmtpSettings = async () => {
         loading.smtp = true
         try {
@@ -182,7 +209,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Other CRUD methods (unchanged, but ensure they refetch after save)
+    // ── Resource CRUD ───────────────────────────────────────────────────────
     const fetchTaxes      = () => fetchList('taxes', settingsApi.getTaxes, taxFilters, taxes)
     const createTax       = (d) => saveItem(() => settingsApi.createTax(d), 'Tax created').then(fetchTaxes)
     const updateTax       = (id, d) => saveItem(() => settingsApi.updateTax(id, d), 'Tax updated').then(fetchTaxes)

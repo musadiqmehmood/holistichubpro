@@ -82,6 +82,7 @@ holistichubpro/
 │   │   │   └── Controller.php
 │   │   └── Middleware/
 │   │       └── EnsurePasswordIsNotExpired.php
+│   │       └── HandleBranchContext.php
 │   ├── Listeners/
 │   │   ├── LogPermissionChange.php
 │   │   └── LogRoleChange.php
@@ -213,6 +214,8 @@ holistichubpro-frontend/
 │   │   ├── branch.js
 │   │   ├── ui.js
 │   │   └── settings.js
+│   ├── utils/
+│   │   └── format.js
 │   ├── views/
 │   │   ├── admin/
 │   │   │   ├── users/

@@ -5,11 +5,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes; // ✅ ADDED
+use Illuminate\Database\Eloquent\Relations\HasOne; // ADDED: Relationship to settings
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Carbon\Carbon; // ADDED: For dynamic formatting
 
 class Branch extends Model
 {
-    use HasFactory, SoftDeletes; // ✅ ADDED SoftDeletes
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'name',
@@ -36,6 +38,15 @@ class Branch extends Model
         return $this->hasMany(User::class);
     }
 
+    /**
+     * ADDED: Link to branch-specific store settings.
+     * This allows the branch to know its own date/time formats.
+     */
+    public function storeSetting(): HasOne
+    {
+        return $this->hasOne(StoreSetting::class);
+    }
+
     public function activeUsersCount(): int
     {
         return $this->users()->whereNotNull('email_verified_at')->count();
@@ -52,13 +63,31 @@ class Branch extends Model
         return $query->where('is_active', true);
     }
 
+    /**
+     * UPDATED: Dynamic formatting based on branch settings.
+     * CHANGE: Replaced hardcoded 'h:i A' with dynamic format from storeSetting.
+     */
     public function getFormattedOpeningTimeAttribute(): ?string
     {
-        return $this->opening_time ? date('h:i A', strtotime($this->opening_time)) : null;
+        if (!$this->opening_time) return null;
+
+        $format = $this->storeSetting?->time_format ?? 'h:i A';
+        try {
+            return Carbon::parse($this->opening_time)->format($format);
+        } catch (\Exception $e) {
+            return date($format, strtotime($this->opening_time));
+        }
     }
 
     public function getFormattedClosingTimeAttribute(): ?string
     {
-        return $this->closing_time ? date('h:i A', strtotime($this->closing_time)) : null;
+        if (!$this->closing_time) return null;
+
+        $format = $this->storeSetting?->time_format ?? 'h:i A';
+        try {
+            return Carbon::parse($this->closing_time)->format($format);
+        } catch (\Exception $e) {
+            return date($format, strtotime($this->closing_time));
+        }
     }
 }

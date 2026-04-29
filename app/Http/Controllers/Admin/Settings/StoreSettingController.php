@@ -17,33 +17,41 @@ class StoreSettingController extends Controller
     /**
      * GET /api/admin/store-settings
      *
-     * Returns the current setting row PLUS all the dropdown options the frontend
-     * needs so every select is driven by live DB data:
-     *   - currencies  → from currencies table (active only)
-     *   - branches    → from branches table
-     *   - timezones   → PHP DateTimeZone list
-     *   - date_formats / time_formats / currency_placements → static enums
+     * UPDATED: Added branch_id support to make settings dynamic per branch.
      */
-    public function show(): JsonResponse
+    public function show(Request $request): JsonResponse
     {
-        $setting = StoreSetting::with('branch')->first();
+        // CHANGE: Detect branch from query or user context instead of just taking the first row
+        $branchId = $request->query('branch_id') ?? auth()->user()->branch_id ?? Branch::first()?->id;
+
+        if (!$branchId) {
+            return response()->json(['message' => 'No branch found. Please create a branch first.'], 404);
+        }
+
+        // CHANGE: Fetch settings specific to the branch
+        $setting = StoreSetting::where('branch_id', $branchId)->first();
+
+        if (!$setting) {
+            $setting = new StoreSetting(['branch_id' => $branchId]);
+        }
+
         return response()->json([
-            'data'    => $setting,
+            'data'    => $setting->load('branch'),
             'options' => $this->buildOptions(),
         ]);
     }
 
     /**
-     * POST /api/admin/store-settings  (frontend sends multipart/form-data)
+     * POST /api/admin/store-settings
      *
-     * The currency field is validated against the currencies table so the user
-     * can only choose a currency that actually exists in the system.
+     * UPDATED: Refactored to update or create settings based on branch_id.
      */
     public function update(Request $request): JsonResponse
     {
         $this->authorize('manage', StoreSetting::class);
 
         $validated = $request->validate([
+            'branch_id'                 => 'required|exists:branches,id', // CHANGE: branch_id is now required
             'store_code'                => 'required|string|max:255',
             'store_name'                => 'required|string|max:255',
             'mobile'                    => 'required|string|max:20',
@@ -55,7 +63,6 @@ class StoreSettingController extends Controller
             'store_website'             => 'nullable|url|max:255',
             'show_signature_on_invoice' => 'sometimes|boolean',
             'bank_details'              => 'nullable|string',
-            'branch_id'                 => 'required|exists:branches,id',
             'timezone'                  => 'sometimes|string|timezone',
             'date_format'               => 'sometimes|string|in:Y-m-d,d/m/Y,m/d/Y,d-M-Y,d.m.Y,M d\, Y',
             'time_format'               => 'sometimes|string|in:H:i,H:i:s,h:i A',
@@ -67,25 +74,28 @@ class StoreSettingController extends Controller
             'signature'                 => 'nullable|image|mimes:jpg,jpeg,png,webp,svg,gif,bmp|max:20480',
         ]);
 
-        $setting = StoreSetting::first();
+        // CHANGE: Find settings by branch_id instead of first()
+        $setting = StoreSetting::where('branch_id', $validated['branch_id'])->first();
         $isNew = false;
 
         if (!$setting) {
             $setting = new StoreSetting();
+            $setting->branch_id = $validated['branch_id'];
             $isNew = true;
         }
 
         $old = $setting->exists ? $setting->toArray() : null;
 
+        // CHANGE: Improved logo handling with existence check
         if ($request->hasFile('store_logo')) {
-            if ($setting->store_logo) {
+            if ($setting->store_logo && Storage::disk('public')->exists($setting->store_logo)) {
                 Storage::disk('public')->delete($setting->store_logo);
             }
             $validated['store_logo'] = $request->file('store_logo')->store('settings/store', 'public');
         }
 
         if ($request->hasFile('signature')) {
-            if ($setting->signature) {
+            if ($setting->signature && Storage::disk('public')->exists($setting->signature)) {
                 Storage::disk('public')->delete($setting->signature);
             }
             $validated['signature'] = $request->file('signature')->store('settings/store', 'public');
@@ -111,8 +121,6 @@ class StoreSettingController extends Controller
             'options' => $this->buildOptions(),
         ]);
     }
-
-    // ── Private helpers ────────────────────────────────────────────────────────
 
     private function buildOptions(): array
     {
