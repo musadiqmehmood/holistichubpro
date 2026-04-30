@@ -64,13 +64,14 @@
                             v-for="sub in visibleSettingsItems"
                             :key="sub.name"
                             :to="sub.path"
-                            :class="[
-                                'flex items-center rounded-lg px-3 py-2 text-xs font-medium transition-colors',
+                            class="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors"
+                            :class="
                                 route.name === sub.routeName
                                     ? 'bg-primary-800 text-white'
                                     : 'text-primary-200 hover:bg-primary-800 hover:text-white'
-                            ]"
+                            "
                         >
+                            <component v-if="sub.icon" :is="sub.icon" class="h-4 w-4 flex-shrink-0" />
                             {{ sub.name }}
                         </router-link>
                     </div>
@@ -123,6 +124,7 @@ import {
     BuildingOfficeIcon,
     Cog6ToothIcon,
     ChevronDownIcon,
+    PaintBrushIcon,               // ✅ added
 } from '@heroicons/vue/24/outline'
 import { useAuthStore } from '@/stores/auth'
 import { useUiStore } from '@/stores/ui'
@@ -134,12 +136,10 @@ const authStore = useAuthStore()
 const uiStore   = useUiStore()
 const route     = useRoute()
 
-// ── Settings collapsible state ─────────────────────────────────────────────
 const settingsOpen = ref(false)
 
 const isSettingsActive = computed(() => route.path.startsWith('/settings'))
 
-// Auto-open the settings group when navigating to any settings route
 watch(
     () => route.path,
     (path) => {
@@ -148,7 +148,7 @@ watch(
     { immediate: true }
 )
 
-// ── Main nav items ─────────────────────────────────────────────────────────
+// ── Main nav items (unchanged) ─────────────────────────────────────────────
 const menuItemsList = [
     { name: 'Dashboard', path: '/dashboard',  icon: HomeIcon,                  permission: null },
     { name: 'Users',     path: '/users',       icon: UsersIcon,                 permission: 'users.view' },
@@ -162,8 +162,15 @@ const visibleMenuItems = computed(() =>
     menuItemsList.filter(item => !item.permission || authStore.hasPermission(item.permission))
 )
 
-// ── Settings sub-nav items ─────────────────────────────────────────────────
+// ── Settings sub-nav items (Global Design added) ───────────────────────────
 const settingsItemsList = [
+    {
+        name: 'Global Design',
+        path: '/settings/global-design',
+        routeName: 'GlobalDesign',
+        permission: null,            // everyone sees it
+        icon: PaintBrushIcon,
+    },
     { name: 'Store Settings',  path: '/settings/store',           routeName: 'StoreSettings',    permission: 'settings.view' },
     { name: 'Site Settings',   path: '/settings/site',            routeName: 'SiteSettings',     permission: 'settings.view' },
     { name: 'SMTP Settings',   path: '/settings/smtp',            routeName: 'SmtpSettings',     permission: 'settings.manage' },

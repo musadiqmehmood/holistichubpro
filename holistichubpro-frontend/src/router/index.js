@@ -74,6 +74,12 @@ const routes = [
                         redirect: { name: 'StoreSettings' },
                     },
                     {
+                        path: 'global-design',                         // ✅ NEW
+                        name: 'GlobalDesign',
+                        component: () => import('@/views/admin/settings/GlobalDesignView.vue'),
+                        meta: { requiresAuth: true },
+                    },
+                    {
                         path: 'store',
                         name: 'StoreSettings',
                         component: () => import('@/views/admin/settings/StoreSettingsView.vue'),

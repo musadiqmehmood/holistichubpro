@@ -4,24 +4,37 @@ import { ref, reactive } from 'vue'
 import { settingsApi, downloadCsv } from '@/api/settings'
 import { useUiStore } from '@/stores/ui'
 import { useAuthStore } from '@/stores/auth'
+import { designSettingsApi } from '@/api/settings'
 
 export const useSettingsStore = defineStore('settings', () => {
     const uiStore = useUiStore()
     const authStore = useAuthStore()
 
-    // Singleton settings
+    // Singleton settings (unchanged)
     const siteSettings  = ref(JSON.parse(localStorage.getItem('site_settings')) || {})
     const storeSettings = ref(JSON.parse(localStorage.getItem('store_settings')) || {})
     const smtpSettings  = ref({})
 
-    // Dynamic UI settings (appearance, behavior, etc.)
+    // ── Dynamic UI settings – now per‑user ──────────────────────────────
+    const dynamicSettingsKey = () => `dynamic_settings_${authStore.user?.id || 'guest'}`
+
     const dynamicSettings = ref({
-        storeName: 'HolisticHub Pro',
-        logoUrl: null,
+        themeMode: 'light',
         primaryColor: '#6366f1',
         secondaryColor: '#8b5cf6',
         backgroundColor: '#f8fafc',
+        surfaceColor: '#ffffff',
+        textPrimary: '#0f172a',
+        textSecondary: '#475569',
+        headingColor: '#0f172a',
+        subheadingColor: '#334155',
+        paragraphColor: '#475569',
+        borderColor: '#e2e8f0',
+        menuBg: '#ffffff',
+        menuText: '#0f172a',
         fontFamily: 'Montserrat, Roboto, system-ui, sans-serif',
+        fontSizeBase: '16px',
+        fontSizeHeadingScale: '1.25',
         showIcons: false,
         sidebarCollapsed: false,
         dateFormat: 'YYYY-MM-DD',
@@ -31,21 +44,21 @@ export const useSettingsStore = defineStore('settings', () => {
         decimals: 2,
     })
 
-    // Resource lists
+    // Resource lists (unchanged)
     const taxes        = ref({ data: [], meta: {} })
     const taxGroups    = ref({ data: [], meta: {} })
     const units        = ref({ data: [], meta: {} })
     const paymentTypes = ref({ data: [], meta: {} })
     const currencies   = ref({ data: [], meta: {} })
 
-    // Filters – per_page now defaults to 10 to match the UI dropdown
+    // Filters – per_page defaults to 10 (unchanged)
     const taxFilters         = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
     const taxGroupFilters    = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
     const unitFilters        = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
     const paymentTypeFilters = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
     const currencyFilters    = reactive({ search: '', status: '', page: 1, per_page: 10, sort_by: 'name', sort_dir: 'asc' })
 
-    // Loading flags
+    // Loading flags (unchanged)
     const loading = reactive({
         site: false, store: false, smtp: false,
         taxes: false, taxGroups: false, units: false,
@@ -55,9 +68,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const importing = ref(false)
     const exporting = ref(false)
 
-    // ─────────────────────────────────────────────────────────────────
-    // Helper: Generic fetch for paginated lists
-    // ─────────────────────────────────────────────────────────────────
+    // ── Helper: fetch for paginated lists (unchanged) ──────────────────
     async function fetchList(key, apiFn, filters, store) {
         loading[key] = true
         try {
@@ -81,12 +92,12 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Specialised fetch for tax groups (returns { data: paginator, available_taxes })
+    // Specialised fetch for tax groups (unchanged)
     const fetchTaxGroups = async () => {
         loading.taxGroups = true
         try {
             const res = await settingsApi.getTaxGroups({ ...taxGroupFilters })
-            const paginator = res.data.data               // the LengthAwarePaginator object
+            const paginator = res.data.data
             taxGroups.value = {
                 data: paginator?.data ?? [],
                 meta: {
@@ -104,7 +115,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Generic save helper
+    // Generic save helper (unchanged)
     async function saveItem(apiFn, successMsg) {
         saving.value = true
         try {
@@ -150,9 +161,7 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Site Settings (unchanged)
-    // ─────────────────────────────────────────────────────────────────
+    // ── Site Settings (unchanged) ───────────────────────────────────────
     const fetchSiteSettings = async () => {
         loading.site = true
         try {
@@ -175,9 +184,7 @@ export const useSettingsStore = defineStore('settings', () => {
         return data
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Store Settings (Branch Dependent) – unchanged
-    // ─────────────────────────────────────────────────────────────────
+    // ── Store Settings (unchanged) ──────────────────────────────────────
     const fetchStoreSettings = async (branchId = null) => {
         loading.store = true
         try {
@@ -202,9 +209,7 @@ export const useSettingsStore = defineStore('settings', () => {
         return res
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // SMTP Settings – unchanged
-    // ─────────────────────────────────────────────────────────────────
+    // ── SMTP Settings (unchanged) ───────────────────────────────────────
     const fetchSmtpSettings = async () => {
         loading.smtp = true
         try {
@@ -232,41 +237,121 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Dynamic UI Settings – unchanged
-    // ─────────────────────────────────────────────────────────────────
+    // ── Server‑Synced Dynamic Settings (Reload‑Proof) ──
     const fetchDynamicSettings = async () => {
+        // Step 1: Pehle localStorage se fast load (UI fatafat react kare)
+        const localKey = dynamicSettingsKey()
+        const localData = localStorage.getItem(localKey)
+        let localApplied = false
+        if (localData) {
+            try {
+                Object.assign(dynamicSettings.value, JSON.parse(localData))
+                applyThemeVariables()
+                localApplied = true
+            } catch (e) { /* ignore */ }
+        }
+
+        // Step 2: Server se latest settings laao (yeh priority lega)
         try {
-            const stored = localStorage.getItem('dynamic_settings')
-            if (stored) Object.assign(dynamicSettings.value, JSON.parse(stored))
-            applyThemeVariables()
-        } catch (e) {
-            console.error('Failed to load dynamic settings:', e)
+            const response = await designSettingsApi.get()
+            const serverSettings = response.data
+
+            // Agar server ne kuch bheja hai (empty object nahi hai) aur useable hai to turant apply karo
+            if (serverSettings && Object.keys(serverSettings).length > 0) {
+                // Server data ko directly assign karo (localStorage se purana data replace hoga)
+                dynamicSettings.value = { ...dynamicSettings.value, ...serverSettings }
+                // LocalStorage ko bhi update karo taake agli baar fast load ho
+                localStorage.setItem(localKey, JSON.stringify(dynamicSettings.value))
+                applyThemeVariables()
+                console.log('✅ Design settings server se loaded')
+            } else {
+                // Agar server ne empty bheja, aur local se kuch load nahi hua to default hi rahega
+                if (!localApplied) {
+                    console.log('ℹ️ No settings found, using defaults')
+                }
+            }
+        } catch (error) {
+            // Server fail, agar local se load ho chuka hai to wo chalega, nahi to default rahega
+            console.warn('⚠️ Server design settings load nahi hue, localStorage se kaam chal raha hai')
+            if (!localApplied) {
+                // Agar localStorage mein bhi kuch nahi tha, to default dynamicSettings hi active rahegi
+                applyThemeVariables()
+            }
         }
     }
 
     const updateDynamicSetting = async (key, value) => {
+        // Turant state update
         dynamicSettings.value[key] = value
-        localStorage.setItem('dynamic_settings', JSON.stringify(dynamicSettings.value))
-        if (['primaryColor', 'secondaryColor', 'backgroundColor', 'fontFamily'].includes(key)) {
-            applyThemeVariables()
+
+        // Hamesha localStorage mein save karo (sabse tez, offline‑proof)
+        const localKey = dynamicSettingsKey()
+        localStorage.setItem(localKey, JSON.stringify(dynamicSettings.value))
+
+        // Background mein server ko bhi save karo (fire‑and‑forget)
+        try {
+            await designSettingsApi.save(dynamicSettings.value)
+            console.log('✅ Design settings server par save ho gayi')
+        } catch (error) {
+            // Server fail – koi tension nahi, localStorage mein toh safe hai
+            console.warn('⚠️ Design settings server par save nahi hui, agle sync tak local hi rahegi')
         }
+
+        // Turant theme apply karo
+        applyThemeVariables()
     }
 
     const applyThemeVariables = () => {
-        document.documentElement.style.setProperty('--primary-color', dynamicSettings.value.primaryColor)
-        document.documentElement.style.setProperty('--secondary-color', dynamicSettings.value.secondaryColor)
-        document.documentElement.style.setProperty('--background-color', dynamicSettings.value.backgroundColor)
-        document.documentElement.style.setProperty('--font-family', dynamicSettings.value.fontFamily)
+        const root = document.documentElement
+        const ds = dynamicSettings.value
+
+        // Typography (always applied)
+        root.style.setProperty('--font-family', ds.fontFamily)
+        root.style.fontSize = ds.fontSizeBase
+        root.style.setProperty('--heading-scale', ds.fontSizeHeadingScale)
+
+        if (ds.themeMode === 'dark') {
+            root.classList.add('dark')
+            const colorVars = [
+                '--primary-color', '--primary-light', '--primary-dark',
+                '--secondary-color', '--background-color', '--surface-color',
+                '--text-primary', '--text-secondary', '--heading-color',
+                '--subheading-color', '--paragraph-color', '--border-color',
+                '--menu-bg', '--menu-text',
+                '--btn-bg', '--btn-text', '--btn-hover-bg'
+            ]
+            colorVars.forEach(v => root.style.removeProperty(v))
+        } else {
+            root.classList.remove('dark')
+            // Light mode – set all custom colours
+            root.style.setProperty('--primary-color', ds.primaryColor)
+            root.style.setProperty('--primary-light', ds.secondaryColor)
+            root.style.setProperty('--primary-dark', adjustColor(ds.primaryColor, -20))
+            root.style.setProperty('--secondary-color', ds.secondaryColor)
+            root.style.setProperty('--background-color', ds.backgroundColor)
+            root.style.setProperty('--surface-color', ds.surfaceColor)
+            root.style.setProperty('--text-primary', ds.textPrimary)
+            root.style.setProperty('--text-secondary', ds.textSecondary)
+            root.style.setProperty('--heading-color', ds.headingColor)
+            root.style.setProperty('--subheading-color', ds.subheadingColor)
+            root.style.setProperty('--paragraph-color', ds.paragraphColor)
+            root.style.setProperty('--border-color', ds.borderColor)
+            root.style.setProperty('--menu-bg', ds.menuBg)
+            root.style.setProperty('--menu-text', ds.menuText)
+            // Button colours
+            root.style.setProperty('--btn-bg', ds.btnBg)
+            root.style.setProperty('--btn-text', ds.btnText)
+            root.style.setProperty('--btn-hover-bg', ds.btnHoverBg)
+        }
     }
 
-    const toggleSidebar = () => {
-        updateDynamicSetting('sidebarCollapsed', !dynamicSettings.value.sidebarCollapsed)
+
+    // Small helper (optional)
+    function adjustColor(hex, amount) {
+        return hex // Stub – you can implement a real darken/lighten later
     }
 
-    // ─────────────────────────────────────────────────────────────────
-    // Resource CRUD – now all fetch actions use the corrected fetchList (with meta)
-    // ─────────────────────────────────────────────────────────────────
+    // ── Resource CRUD (unchanged) ───────────────────────────────────────
     const fetchTaxes      = () => fetchList('taxes', settingsApi.getTaxes, taxFilters, taxes)
     const createTax       = (d) => saveItem(() => settingsApi.createTax(d), 'Tax created').then(fetchTaxes)
     const updateTax       = (id, d) => saveItem(() => settingsApi.updateTax(id, d), 'Tax updated').then(fetchTaxes)
@@ -299,9 +384,7 @@ export const useSettingsStore = defineStore('settings', () => {
     const importCurrencies     = (file) => importItems(settingsApi.importCurrencies, file, fetchCurrencies)
     const exportCurrencies     = () => exportItems(settingsApi.exportCurrencies, 'currencies.csv', currencyFilters)
 
-    // ─────────────────────────────────────────────────────────────────
-    // Return everything
-    // ─────────────────────────────────────────────────────────────────
+    // ── Return everything ────────────────────────────────────────────────
     return {
         siteSettings, storeSettings, smtpSettings, dynamicSettings,
         taxes, taxGroups, units, paymentTypes, currencies,
@@ -312,7 +395,7 @@ export const useSettingsStore = defineStore('settings', () => {
         fetchStoreSettings, updateStoreSettings,
         fetchSmtpSettings, updateSmtpSettings, testSmtp,
 
-        fetchDynamicSettings, updateDynamicSetting, applyThemeVariables, toggleSidebar,
+        fetchDynamicSettings, updateDynamicSetting, applyThemeVariables, toggleSidebar: () => updateDynamicSetting('sidebarCollapsed', !dynamicSettings.value.sidebarCollapsed),
 
         fetchTaxes, createTax, updateTax, deleteTax, importTaxes, exportTaxes,
         fetchTaxGroups, createTaxGroup, updateTaxGroup, deleteTaxGroup,
@@ -324,3 +407,4 @@ export const useSettingsStore = defineStore('settings', () => {
         fetchCurrencies, createCurrency, updateCurrency, deleteCurrency, importCurrencies, exportCurrencies,
     }
 })
+

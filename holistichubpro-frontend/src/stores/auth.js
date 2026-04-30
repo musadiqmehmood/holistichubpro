@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/api/axios'
 import { authApi } from '@/api/auth'
+import { useSettingsStore } from '@/stores/settings'   // ✅ ADDED: for per‑user theme
 
 export const useAuthStore = defineStore('auth', () => {
     // State
@@ -148,6 +149,11 @@ export const useAuthStore = defineStore('auth', () => {
             if (authToken && userData) {
                 setToken(authToken)
                 setUser(userData)
+
+                // ✅ ADDED: Reload user‑specific design settings after login
+                const settingsStore = useSettingsStore()
+                await settingsStore.fetchDynamicSettings()
+
                 return { success: true }
             }
 
@@ -204,6 +210,11 @@ export const useAuthStore = defineStore('auth', () => {
             const response = await authApi.getUser()
             if (import.meta.env.DEV) console.log('[AuthStore] fetchUser response:', response.data)
             setUser(response.data)
+
+            // ✅ ADDED: Reload user‑specific design settings after fetching user
+            const settingsStore = useSettingsStore()
+            settingsStore.fetchDynamicSettings()
+
             return response.data
         } catch (err) {
             if (import.meta.env.DEV) console.error('[AuthStore] fetchUser error:', err)

@@ -2,15 +2,11 @@
     <div class="flex h-full min-h-0 gap-6">
         <!-- Settings Sidebar Card -->
         <aside class="w-64 shrink-0">
-            <div
-                class="sticky top-6 overflow-hidden rounded-2xl bg-white border border-neutral-10 shadow-sm"
-            >
-                <!-- Header -->
+            <div class="sticky top-6 overflow-hidden rounded-2xl bg-white border border-neutral-10 shadow-sm">
                 <div class="px-5 pt-5 pb-3">
                     <h2 class="text-xs font-semibold uppercase tracking-widest text-neutral-40">Settings</h2>
                 </div>
 
-                <!-- Navigation Items -->
                 <nav class="px-2 pb-3 space-y-0.5">
                     <router-link
                         v-for="item in navItems"
@@ -19,19 +15,19 @@
                         :to="item.to"
                         class="group flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200"
                         :class="[
-              isActive(item.to)
-                ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)]'
-                : 'text-neutral-60 hover:bg-neutral-5 hover:text-neutral-90',
-            ]"
+                            isActive(item.to)
+                                ? 'bg-[var(--primary-color)]/10 text-[var(--primary-color)]'
+                                : 'text-neutral-60 hover:bg-neutral-5 hover:text-neutral-90',
+                        ]"
                     >
                         <component
                             :is="item.icon"
                             class="h-5 w-5 shrink-0"
                             :class="
-                isActive(item.to)
-                  ? 'text-[var(--primary-color)]'
-                  : 'text-neutral-40 group-hover:text-neutral-60'
-              "
+                                isActive(item.to)
+                                    ? 'text-[var(--primary-color)]'
+                                    : 'text-neutral-40 group-hover:text-neutral-60'
+                            "
                         />
                         <span>{{ item.name }}</span>
                     </router-link>
@@ -39,7 +35,6 @@
             </div>
         </aside>
 
-        <!-- Main Settings Content -->
         <main class="flex-1 min-w-0 pb-10">
             <router-view />
         </main>
@@ -60,6 +55,7 @@ import {
     CurrencyDollarIcon,
     KeyIcon,
     CircleStackIcon,
+    PaintBrushIcon,            // ✅ added
 } from '@heroicons/vue/24/outline'
 
 defineOptions({ name: 'SettingsView' })
@@ -75,6 +71,12 @@ const isActive = (to) => {
 
 const navItems = computed(() =>
     [
+        {
+            name: 'Global Design',                  // ✅ NEW
+            to: { name: 'GlobalDesign' },
+            icon: PaintBrushIcon,
+            visible: true,                          // everyone
+        },
         {
             name: 'Store Settings',
             to: { name: 'StoreSettings' },

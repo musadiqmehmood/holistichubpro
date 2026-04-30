@@ -12,11 +12,13 @@
         />
 
         <div
-            class="relative shrink-0 rounded-full transition-all duration-200 ease-in-out"
+            class="relative shrink-0 rounded-full border-2 transition-all duration-200 ease-in-out"
             :class="[
-        disabled ? 'cursor-not-allowed' : 'cursor-pointer',
         'w-11 h-6',
-        modelValue ? 'border-transparent' : 'border-gray-300 bg-gray-200',
+        modelValue
+          ? 'border-[var(--primary-color)]'
+          : 'border-[var(--border-color)] bg-[var(--surface-color)]',
+        disabled ? 'cursor-not-allowed' : 'cursor-pointer'
       ]"
             :style="modelValue ? { backgroundColor: 'var(--primary-color)' } : {}"
         >
@@ -26,7 +28,7 @@
             />
         </div>
 
-        <span v-if="label" class="text-sm font-medium text-gray-700">{{ label }}</span>
+        <span v-if="label" class="text-sm font-medium text-[var(--text-primary)]">{{ label }}</span>
         <slot v-else />
     </label>
 </template>

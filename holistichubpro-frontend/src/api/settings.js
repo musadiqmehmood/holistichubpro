@@ -94,3 +94,8 @@ export const settingsApi = {
     downloadBackup: (filename) => api.get(`/admin/backups/${filename}/download`, { responseType: 'blob' }),
     deleteBackup:   (filename) => api.delete(`/admin/backups/${filename}`),
 }
+
+export const designSettingsApi = {
+    get: () => api.get('/design-settings'),
+    save: (settings) => api.put('/design-settings', { settings }),
+}

@@ -1,10 +1,11 @@
 <template>
     <button
         :class="[
-      'relative inline-flex items-center justify-center gap-2 font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed',
-      computedClasses,
-      sizeClasses,
-      shapeClasses,
+      'app-btn',
+      `app-btn--${variant}`,
+      `app-btn--${size}`,
+      `app-btn--${shape}`,
+      { 'opacity-60 pointer-events-none': disabled || loading }
     ]"
         :disabled="disabled || loading"
         v-bind="$attrs"
@@ -15,58 +16,104 @@
         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
       </svg>
     </span>
-        <span :class="{ 'opacity-0': loading }" class="flex items-center gap-2">
+        <span :class="{ 'opacity-0': loading }" class="inline-flex items-center gap-2">
       <slot />
     </span>
     </button>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
-const props = defineProps({
-    variant: { type: String, default: 'filled' }, // filled, outlined, tonal, text
-    color: { type: String, default: 'primary' }, // primary, error, neutral
-    size: { type: String, default: 'medium' },
-    shape: { type: String, default: 'rounded' },
+defineProps({
+    variant: { type: String, default: 'filled' },   // filled | outlined | tonal | text
+    color:    { type: String, default: 'primary' },  // reserved for future use
+    size:     { type: String, default: 'medium' },   // small | medium | large
+    shape:    { type: String, default: 'rounded' },  // rounded | pill | square
     disabled: Boolean,
-    loading: Boolean,
+    loading:  Boolean,
 })
-
-const computedClasses = computed(() => {
-    const base = ''
-    const styles = {
-        primary: {
-            filled: 'bg-[var(--primary-color)] text-white hover:bg-[var(--primary-dark)] shadow-sm border border-transparent focus:ring-[var(--primary-color)]',
-            outlined: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm focus:ring-[var(--primary-color)]',
-            tonal: 'bg-[var(--primary-color)]/10 text-[var(--primary-dark)] hover:bg-[var(--primary-color)]/20 border border-transparent focus:ring-[var(--primary-color)]',
-            text: 'bg-transparent text-[var(--primary-color)] hover:bg-[var(--primary-color)]/10 focus:ring-[var(--primary-color)]'
-        },
-        error: {
-            filled: 'bg-[var(--error-color)] text-white hover:bg-red-600 shadow-sm border border-transparent focus:ring-[var(--error-color)]',
-            outlined: 'bg-white border border-red-300 text-red-700 hover:bg-red-50 shadow-sm focus:ring-[var(--error-color)]',
-            tonal: 'bg-red-50 text-red-700 hover:bg-red-100 border border-transparent focus:ring-[var(--error-color)]',
-            text: 'bg-transparent text-[var(--error-color)] hover:bg-red-50 focus:ring-[var(--error-color)]'
-        },
-        neutral: {
-            filled: 'bg-gray-800 text-white hover:bg-gray-900 shadow-sm border border-transparent focus:ring-gray-500',
-            outlined: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 shadow-sm focus:ring-gray-500',
-            tonal: 'bg-gray-100 text-gray-800 hover:bg-gray-200 border border-transparent focus:ring-gray-500',
-            text: 'bg-transparent text-gray-600 hover:bg-gray-100 focus:ring-gray-500'
-        }
-    }
-    return styles[props.color]?.[props.variant] || styles.primary.filled
-})
-
-const sizeClasses = computed(() => ({
-    small: 'px-3 py-1.5 text-xs',
-    medium: 'px-4 py-2 text-sm',
-    large: 'px-6 py-3 text-base'
-})[props.size] || 'px-4 py-2 text-sm')
-
-const shapeClasses = computed(() => ({
-    rounded: 'rounded-lg',
-    pill: 'rounded-full',
-    square: 'rounded-none'
-})[props.shape] || 'rounded-lg')
 </script>
+
+<style scoped>
+/* Base button reset */
+.app-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    outline: none;
+    cursor: pointer;
+}
+
+/* Focus ring */
+.app-btn:focus-visible {
+    box-shadow: 0 0 0 2px var(--btn-bg, var(--primary-color));
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+}
+
+/* ===== Variants ===== */
+.app-btn--filled {
+    background-color: var(--btn-bg, var(--primary-color));
+    color: var(--btn-text, #ffffff);
+    border: 1px solid transparent;
+}
+.app-btn--filled:hover:not(:disabled) {
+    background-color: var(--btn-hover-bg, var(--primary-dark));
+}
+
+.app-btn--outlined {
+    background-color: transparent;
+    color: var(--btn-bg, var(--primary-color));
+    border: 1px solid var(--btn-bg, var(--primary-color));
+}
+.app-btn--outlined:hover:not(:disabled) {
+    background-color: var(--btn-bg, var(--primary-color));
+    color: var(--btn-text, #ffffff);
+}
+
+.app-btn--tonal {
+    background-color: color-mix(in srgb, var(--btn-bg, var(--primary-color)) 15%, transparent);
+    color: var(--btn-bg, var(--primary-color));
+    border: 1px solid transparent;
+}
+.app-btn--tonal:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--btn-bg, var(--primary-color)) 25%, transparent);
+}
+
+.app-btn--text {
+    background-color: transparent;
+    color: var(--btn-bg, var(--primary-color));
+    border: 1px solid transparent;
+}
+.app-btn--text:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--btn-bg, var(--primary-color)) 10%, transparent);
+}
+
+/* ===== Sizes ===== */
+.app-btn--small {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+}
+.app-btn--medium {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+}
+.app-btn--large {
+    padding: 0.75rem 1.5rem;
+    font-size: 1rem;
+}
+
+/* ===== Shapes ===== */
+.app-btn--rounded {
+    border-radius: 0.5rem;
+}
+.app-btn--pill {
+    border-radius: 9999px;
+}
+.app-btn--square {
+    border-radius: 0;
+}
+</style>

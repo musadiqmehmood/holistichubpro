@@ -1,5 +1,5 @@
 <template>
-    <div :class="['bg-white rounded-xl shadow-sm border border-gray-200', paddingClasses]">
+    <div :class="['bg-[var(--surface-color)] rounded-xl shadow-sm border border-[var(--border-color)]', paddingClasses]">
         <slot />
     </div>
 </template>

@@ -4,7 +4,7 @@
             'rounded-full flex items-center justify-center font-semibold text-white',
             sizeClasses,
         ]"
-        :style="{ backgroundColor: bgColor }"
+        :style="{ backgroundColor: bgColor || 'var(--primary-color)' }"
     >
         <slot>
             <span v-if="src">
@@ -23,7 +23,7 @@ const props = defineProps({
     alt: String,
     name: String,
     size: { type: String, default: 'md', validator: (v) => ['sm', 'md', 'lg'].includes(v) },
-    bgColor: { type: String, default: '#7c3aed' }, // ✅ Expects valid CSS color (hex, rgb, etc.)
+    bgColor: { type: String, default: null },
 })
 
 const initials = computed(() => {

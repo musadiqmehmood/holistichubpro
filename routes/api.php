@@ -38,6 +38,10 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
 // ── Authenticated routes ───────────────────────────────────────────────────────
 Route::middleware(['auth:sanctum'])->group(function () {
 
+    // User Design Settings (server-side sync)
+    Route::get('design-settings', [\App\Http\Controllers\UserDesignSettingController::class, 'show']);
+    Route::put('design-settings', [\App\Http\Controllers\UserDesignSettingController::class, 'update']);
+
     Route::post('/logout',          [AuthController::class, 'logout']);
     Route::get('/user',             [AuthController::class, 'user']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
