@@ -64,7 +64,7 @@ class CurrencyController extends Controller
             'code.unique' => 'This currency code is already registered.',
         ]);
 
-        $currency = Currency::create($validated);
+        $currency = Currency::create(array_merge($validated, ['created_by' => auth()->id()]));
 
         AuditLogService::log('created', Currency::class, $currency->id, null, $currency->toArray());
 
@@ -205,7 +205,7 @@ class CurrencyController extends Controller
 
                 $result = Currency::firstOrCreate(
                     ['code' => $code],
-                    ['name' => trim($data['name']), 'symbol' => $data['symbol'], 'status' => $status]
+                    ['name' => trim($data['name']), 'symbol' => $data['symbol'], 'status' => $status, 'created_by' => auth()->id()]
                 );
 
                 $result->wasRecentlyCreated ? $imported++ : $skipped++;

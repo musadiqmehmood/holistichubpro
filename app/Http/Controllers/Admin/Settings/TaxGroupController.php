@@ -71,6 +71,7 @@ class TaxGroupController extends Controller
             'tax_ids'               => $taxIds,
             'calculated_percentage' => Tax::whereIn('id', $taxIds)->sum('percentage'),
             'status'                => $validated['status'] ?? true,
+            'created_by'            => auth()->id(),
         ]);
 
         AuditLogService::log('created', TaxGroup::class, $group->id, null, $group->toArray());

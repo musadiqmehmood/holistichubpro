@@ -73,32 +73,54 @@ class BackupController extends Controller
         $path = $dir . '/' . $filename;
 
         $db = config('database.connections.' . config('database.default'));
-
         $mysqldump = $this->getMysqldumpPath();
 
-        // Build command – wrap executable in quotes in case of spaces in path
-        $cmd = sprintf(
-            '"%s" --user=%s --password=%s --host=%s --port=%s %s > "%s" 2>&1',
-            $mysqldump,
-            escapeshellarg($db['username']),
-            escapeshellarg($db['password']),
-            escapeshellarg($db['host']),
-            escapeshellarg($db['port'] ?? 3306),
+        // SECURITY: Pass password via MYSQL_PWD env var — never visible in `ps aux`.
+        // Build args as array to avoid shell string interpolation entirely.
+        $env = array_merge(getenv(), [
+            'MYSQL_PWD' => $db['password'],
+        ]);
+
+        $descriptors = [
+            0 => ['pipe', 'r'],   // stdin
+            1 => ['file', $path, 'w'], // stdout → backup file
+            2 => ['pipe', 'w'],   // stderr
+        ];
+
+        $args = [
+            escapeshellarg($mysqldump),
+            '--user=' . escapeshellarg($db['username']),
+            '--host=' . escapeshellarg($db['host']),
+            '--port=' . escapeshellarg($db['port'] ?? 3306),
+            '--single-transaction',
+            '--skip-lock-tables',
             escapeshellarg($db['database']),
-            $path
-        );
+        ];
 
-        Log::info('Running backup command', ['cmd' => $cmd]);
+        $cmd = implode(' ', $args);
+        Log::info('Running backup', ['host' => $db['host'], 'database' => $db['database']]);
 
-        exec($cmd, $output, $exitCode);
+        $process = proc_open($cmd, $descriptors, $pipes, null, $env);
+
+        if (!is_resource($process)) {
+            Log::error('Backup failed: could not start mysqldump process');
+            return response()->json([
+                'message' => 'Backup failed. Could not start database dump process.',
+            ], 500);
+        }
+
+        fclose($pipes[0]);
+        $stderr = stream_get_contents($pipes[2]);
+        fclose($pipes[2]);
+
+        $exitCode = proc_close($process);
 
         if ($exitCode !== 0 || !file_exists($path) || filesize($path) === 0) {
             @unlink($path);
-            $detail = implode("\n", $output);
-            Log::error('Backup failed', ['exitCode' => $exitCode, 'output' => $detail]);
+            Log::error('Backup failed', ['exitCode' => $exitCode, 'stderr' => $stderr]);
             return response()->json([
                 'message' => 'Backup failed. Ensure mysqldump is available and DB credentials are correct.',
-                'detail' => $detail,
+                'detail' => $stderr,
             ], 500);
         }
 

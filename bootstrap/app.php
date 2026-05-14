@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Token-based auth mein CSRF nahi chahiye
         $middleware->api(append: [
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \App\Http\Middleware\HandleBranchContext::class,
         ]);
 
         // 🔧 Custom unauthenticated handler for API

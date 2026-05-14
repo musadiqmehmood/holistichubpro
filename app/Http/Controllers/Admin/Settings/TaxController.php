@@ -47,7 +47,7 @@ class TaxController extends Controller
             'percentage.max' => 'Tax percentage cannot exceed 100%.',
         ]);
 
-        $tax = Tax::create($validated);
+        $tax = Tax::create(array_merge($validated, ['created_by' => auth()->id()]));
 
         AuditLogService::log('created', Tax::class, $tax->id, null, $tax->toArray());
 
@@ -172,7 +172,7 @@ class TaxController extends Controller
 
                 $result = Tax::firstOrCreate(
                     ['name' => trim($data['name'])],
-                    ['percentage' => (float) $data['percentage'], 'status' => $status]
+                    ['percentage' => (float) $data['percentage'], 'status' => $status, 'created_by' => auth()->id()]
                 );
 
                 $result->wasRecentlyCreated ? $imported++ : $skipped++;

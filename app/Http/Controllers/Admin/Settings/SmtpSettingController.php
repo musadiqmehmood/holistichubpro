@@ -10,6 +10,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\Mailer\Transport\Smtp\EsmtpTransport;
+use Symfony\Component\Mailer\Transport\Smtp\Stream\SocketStream;
+use Symfony\Component\Mime\Email;
 
 class SmtpSettingController extends Controller
 {
@@ -79,7 +82,7 @@ class SmtpSettingController extends Controller
 
     /**
      * Send a test email using the currently saved SMTP settings.
-     * Temporarily overrides the mail configuration, sends the email, and restores the original config.
+     * Creates a temporary Symfony transport — global mail config is NEVER touched.
      */
     public function test(): JsonResponse
     {
@@ -99,35 +102,35 @@ class SmtpSettingController extends Controller
         }
         $recipient = $user->email;
 
-        // Save original mail configuration
-        $originalMailConfig = config('mail');
-        $originalMailerConfig = config('mail.mailers.smtp');
-
         try {
-            // Override mail configuration with SMTP settings
-            config([
-                'mail.default' => 'smtp',
-                'mail.mailers.smtp' => [
-                    'transport' => 'smtp',
-                    'host'      => $setting->host,
-                    'port'      => $setting->port,
-                    'encryption' => $setting->encryption === 'none' ? null : $setting->encryption,
-                    'username'  => $setting->username,
-                    'password'  => $setting->password,
-                    'timeout'   => null,
-                    'auth_mode' => null,
-                ],
-            ]);
+            // Build a temporary SMTP transport without mutating global config.
+            $stream = new SocketStream();
 
-            // Send test email
-            Mail::raw(
-                'This is a test email from ' . config('app.name') . ' to verify your SMTP configuration.',
-                function ($msg) use ($recipient) {
-                    $msg->from(config('mail.from.address'), config('mail.from.name'))
-                        ->to($recipient)
-                        ->subject(config('app.name') . ' — SMTP Test Email');
-                }
+            $encryption = $setting->encryption === 'none' ? null : $setting->encryption;
+            if ($encryption) {
+                $stream->setHost($setting->host);
+                $stream->setPort($setting->port);
+                $stream->setTls(true);
+            }
+
+            $transport = new EsmtpTransport(
+                host: $setting->host,
+                port: $setting->port,
+                tls: $encryption !== null,
+                stream: $stream
             );
+            $transport->setUsername($setting->username);
+            $transport->setPassword($setting->password);
+
+            $mailer = new \Symfony\Component\Mailer\Mailer($transport);
+
+            $email = (new Email())
+                ->from(config('mail.from.address', 'noreply@example.com'))
+                ->to($recipient)
+                ->subject(config('app.name') . ' — SMTP Test Email')
+                ->text('This is a test email from ' . config('app.name') . ' to verify your SMTP configuration.');
+
+            $mailer->send($email);
 
             AuditLogService::log('smtp_test_sent', SmtpSetting::class, $setting->id, null, [
                 'recipient' => $recipient,
@@ -149,10 +152,6 @@ class SmtpSettingController extends Controller
             ]);
 
             return response()->json(['message' => 'Send failed: ' . $e->getMessage()], 500);
-        } finally {
-            // Restore original mail configuration
-            config(['mail' => $originalMailConfig]);
-            config(['mail.mailers.smtp' => $originalMailerConfig]);
         }
     }
 

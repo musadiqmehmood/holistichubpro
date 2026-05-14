@@ -18,28 +18,32 @@ class PermissionController extends Controller
     /**
      * List all permissions grouped by resource
      */
-    public function index()
+    public function index(Request $request)
     {
         $this->authorize('viewAny', Permission::class);
 
-        // CRITICAL FIX: Return flat array with roles relationship
-        $permissions = Permission::with('roles')->get()->map(function ($permission) {
-            return [
-                'id' => $permission->id,
-                'name' => $permission->name,
-                'guard_name' => $permission->guard_name,
-                'created_at' => $permission->created_at,
-                'updated_at' => $permission->updated_at,
-                'roles' => $permission->roles->map(function ($role) {
-                    return [
-                        'id' => $role->id,
-                        'name' => $role->name,
-                    ];
-                })->toArray(), // Ensure this is an array
-            ];
-        });
+        $perPage = (int) $request->input('per_page', 50);
+        $perPage = min($perPage, 100);
 
-        return response()->json($permissions); // Return array directly
+        $permissions = Permission::with('roles')
+            ->paginate($perPage)
+            ->through(function ($permission) {
+                return [
+                    'id' => $permission->id,
+                    'name' => $permission->name,
+                    'guard_name' => $permission->guard_name,
+                    'created_at' => $permission->created_at,
+                    'updated_at' => $permission->updated_at,
+                    'roles' => $permission->roles->map(function ($role) {
+                        return [
+                            'id' => $role->id,
+                            'name' => $role->name,
+                        ];
+                    })->toArray(),
+                ];
+            });
+
+        return response()->json($permissions);
     }
 
     /**
@@ -162,7 +166,7 @@ class PermissionController extends Controller
         // Check if permission is assigned directly to any users
         $userCount = DB::table('model_has_permissions')
             ->where('permission_id', $permission->id)
-            ->where('model_type', 'App\\Models\\User')
+            ->where('model_type', 'App\Models\User')
             ->count();
 
         if ($userCount > 0) {

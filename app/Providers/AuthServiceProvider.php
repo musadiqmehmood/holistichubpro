@@ -108,13 +108,12 @@ class AuthServiceProvider extends ServiceProvider
                     ->limit(5)
                     ->pluck('password');
 
+                $hasMatch = false;
                 foreach ($recentHashes as $hash) {
-                    if (\Illuminate\Support\Facades\Hash::check($value, $hash)) {
-                        return false;
-                    }
+                    $hasMatch = $hasMatch || \Illuminate\Support\Facades\Hash::check($value, $hash);
                 }
 
-                return true;
+                return !$hasMatch;
             },
             'You cannot reuse any of your last 5 passwords.'
         );

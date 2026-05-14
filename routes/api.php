@@ -25,7 +25,7 @@ use App\Http\Controllers\Admin\Settings\BackupController;
 use App\Http\Middleware\EnsurePasswordIsNotExpired;
 
 // ── Public routes ──────────────────────────────────────────────────────────────
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
 
 // Public currency list — for dropdowns that appear before authentication
 // (e.g. sign-up forms or landing pages). Uses a dedicated method so the

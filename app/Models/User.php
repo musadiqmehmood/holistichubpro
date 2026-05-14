@@ -115,4 +115,56 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(AuditLog::class, 'performed_by');
     }
+
+    /**
+     * Check if the user has a role scoped to a specific branch.
+     * Falls back to regular hasRole() if no branch context is provided.
+     */
+    public function hasRoleInBranch($roles, ?int $branchId = null): bool
+    {
+        $branchId ??= app('branch_context')?->id;
+        if (!$branchId) {
+            return $this->hasRole($roles);
+        }
+
+        $roleNames = collect(is_array($roles) ? $roles : [$roles])
+            ->filter(fn($r) => is_string($r) || is_numeric($r))
+            ->map(fn($r) => (string) $r)
+            ->toArray();
+
+        if (empty($roleNames)) {
+            return false;
+        }
+
+        return DB::table('model_has_roles')
+            ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+            ->where('model_has_roles.model_id', $this->id)
+            ->where('model_has_roles.model_type', self::class)
+            ->where('model_has_roles.branch_id', $branchId)
+            ->whereIn('roles.name', $roleNames)
+            ->exists();
+    }
+
+    /**
+     * Check if the user has a permission via roles scoped to a specific branch.
+     * Falls back to regular hasPermissionTo() if no branch context is provided.
+     */
+    public function hasPermissionInBranch($permission, ?int $branchId = null): bool
+    {
+        $branchId ??= app('branch_context')?->id;
+        if (!$branchId) {
+            return $this->checkPermissionTo($permission);
+        }
+
+        $permissionName = is_string($permission) ? $permission : $permission->name;
+
+        return DB::table('role_has_permissions')
+            ->join('model_has_roles', 'role_has_permissions.role_id', '=', 'model_has_roles.role_id')
+            ->join('permissions', 'role_has_permissions.permission_id', '=', 'permissions.id')
+            ->where('model_has_roles.model_id', $this->id)
+            ->where('model_has_roles.model_type', self::class)
+            ->where('model_has_roles.branch_id', $branchId)
+            ->where('permissions.name', $permissionName)
+            ->exists();
+    }
 }

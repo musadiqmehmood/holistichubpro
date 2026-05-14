@@ -40,7 +40,7 @@ class PaymentTypeController extends Controller
             'status' => 'sometimes|boolean',
         ]);
 
-        $paymentType = PaymentType::create($validated);
+        $paymentType = PaymentType::create(array_merge($validated, ['created_by' => auth()->id()]));
 
         AuditLogService::log('created', PaymentType::class, $paymentType->id, null, $paymentType->toArray());
 
@@ -158,7 +158,7 @@ class PaymentTypeController extends Controller
 
                 $result = PaymentType::firstOrCreate(
                     ['name' => trim($data['name'])],
-                    ['status' => $status]
+                    ['status' => $status, 'created_by' => auth()->id()]
                 );
 
                 $result->wasRecentlyCreated ? $imported++ : $skipped++;

@@ -60,25 +60,29 @@ class RoleController extends Controller
 
         $guardName = $validated['guard_name'] ?? 'web';
 
-        $role = Role::create([
-            'name' => $validated['name'],
-            'guard_name' => $guardName,
-        ]);
+        $role = DB::transaction(function () use ($validated, $guardName) {
+            $role = Role::create([
+                'name' => $validated['name'],
+                'guard_name' => $guardName,
+            ]);
 
-        // Sync permissions if provided (by name)
-        if (!empty($validated['permissions'])) {
-            $role->syncPermissions($validated['permissions']);
-        }
+            // Sync permissions if provided (by name)
+            if (!empty($validated['permissions'])) {
+                $role->syncPermissions($validated['permissions']);
+            }
 
-        // Clear permission cache
+            // EXPLICIT AUDIT LOG - Using Service
+            AuditLogService::log('created', Role::class, $role->id, null, [
+                'name' => $role->name,
+                'guard_name' => $role->guard_name,
+                'permissions' => $validated['permissions'] ?? [],
+            ]);
+
+            return $role;
+        });
+
+        // Clear permission cache (outside transaction — harmless if stale)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-
-        // EXPLICIT AUDIT LOG - Using Service
-        AuditLogService::log('created', Role::class, $role->id, null, [
-            'name' => $role->name,
-            'guard_name' => $role->guard_name,
-            'permissions' => $validated['permissions'] ?? [],
-        ]);
 
         return response()->json([
             'message' => 'Role created successfully',
@@ -136,28 +140,30 @@ class RoleController extends Controller
             'permissions.*' => 'string|exists:permissions,name', // Validate permission names
         ]);
 
-        if (isset($validated['name'])) {
-            $role->name = $validated['name'];
-        }
-        if (isset($validated['guard_name'])) {
-            $role->guard_name = $validated['guard_name'];
-        }
-        $role->save();
+        DB::transaction(function () use ($role, $validated, $oldValues) {
+            if (isset($validated['name'])) {
+                $role->name = $validated['name'];
+            }
+            if (isset($validated['guard_name'])) {
+                $role->guard_name = $validated['guard_name'];
+            }
+            $role->save();
 
-        // Sync permissions if provided (by name)
-        if (isset($validated['permissions'])) {
-            $role->syncPermissions($validated['permissions']);
-        }
+            // Sync permissions if provided (by name)
+            if (isset($validated['permissions'])) {
+                $role->syncPermissions($validated['permissions']);
+            }
 
-        // Clear cache
+            // EXPLICIT AUDIT LOG - Using Service
+            AuditLogService::log('updated', Role::class, $role->id, $oldValues, [
+                'name' => $role->name,
+                'guard_name' => $role->guard_name,
+                'permissions' => $validated['permissions'] ?? $oldValues['permissions'],
+            ]);
+        });
+
+        // Clear cache (outside transaction — harmless if stale)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-
-        // EXPLICIT AUDIT LOG - Using Service
-        AuditLogService::log('updated', Role::class, $role->id, $oldValues, [
-            'name' => $role->name,
-            'guard_name' => $role->guard_name,
-            'permissions' => $validated['permissions'] ?? $oldValues['permissions'],
-        ]);
 
         return response()->json([
             'message' => 'Role updated successfully',
@@ -197,12 +203,14 @@ class RoleController extends Controller
             ], 409);
         }
 
-        // EXPLICIT AUDIT LOG - Using Service
-        AuditLogService::log('deleted', Role::class, $role->id, $oldValues, null);
+        DB::transaction(function () use ($role, $oldValues) {
+            // EXPLICIT AUDIT LOG - Using Service
+            AuditLogService::log('deleted', Role::class, $role->id, $oldValues, null);
 
-        $role->delete();
+            $role->delete();
+        });
 
-        // Clear cache
+        // Clear cache (outside transaction — harmless if stale)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return response()->json(['message' => 'Role deleted successfully']);

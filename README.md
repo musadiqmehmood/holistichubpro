@@ -57,6 +57,7 @@ npm run dev
 holistichubpro/
 ├── app/
 │   ├── Events/
+│   │   ├── EventServiceProvider.php
 │   │   ├── PermissionChanged.php
 │   │   └── RoleChanged.php
 │   ├── Http/
@@ -80,6 +81,7 @@ holistichubpro/
 │   │   │   │       └── UnitController.php
 │   │   │   ├── AuthController.php
 │   │   │   └── Controller.php
+│   │   │   └── UserDesignSettingController.php
 │   │   └── Middleware/
 │   │       └── EnsurePasswordIsNotExpired.php
 │   │       └── HandleBranchContext.php
@@ -101,6 +103,7 @@ holistichubpro/
 │   │   ├── TaxGroup.php
 │   │   ├── Unit.php
 │   │   └── User.php
+│   │   └── UserDesignSetting.php
 │   ├── Policies/
 │   │   ├── AuditLogPolicy.php
 │   │   ├── CurrencyPolicy.php
@@ -152,6 +155,7 @@ holistichubpro/
 │   │   ├── 2026_04_12_221443_create_units_table.php
 │   │   ├── 2026_04_12_221444_create_payment_types_table.php
 │   │   └── 2026_04_12_221445_create_currencies_table.php
+│   │   └── 2026_04_30_220101_create_user_design_settings_table.php
 │   └── seeders/
 │       ├── DatabaseSeeder.php
 │       └── InitialSetupSeeder.php
@@ -206,6 +210,7 @@ holistichubpro-frontend/
 │   │       ├── AppPagination.vue
 │   │       ├── AppSelect.vue
 │   │       ├── AppTable.vue
+│   │       ├── AppToggle.vue
 │   │       └── BranchSelector.vue
 │   ├── router/
 │   │   └── index.js
@@ -229,15 +234,17 @@ holistichubpro-frontend/
 │   │   │   ├── audit/
 │   │   │   │   └── AuditLogsView.vue
 │   │   │   └── settings/
+│   │   │       ├── ColorPicker.vue
+│   │   │       ├── CurrenciesView.vue
+│   │   │       ├── DatabaseBackupView.vue
+│   │   │       ├── GlobalDesignView.vue
 │   │   │       ├── SettingsView.vue
 │   │   │       ├── SiteSettingsView.vue
 │   │   │       ├── StoreSettingsView.vue
 │   │   │       ├── SmtpSettingsView.vue
 │   │   │       ├── TaxListView.vue
-│   │   │       ├── UnitsListView.vue
 │   │   │       ├── PaymentTypesView.vue
-│   │   │       ├── CurrenciesView.vue
-│   │   │       └── DatabaseBackupView.vue
+│   │   │       └── UnitsListView.vue
 │   │   ├── auth/
 │   │   │   ├── ChangePasswordView.vue
 │   │   │   ├── EmailVerificationView.vue
@@ -253,6 +260,7 @@ holistichubpro-frontend/
 ├── package.json
 ├── postcss.config.js
 ├── tailwind.config.js
+├── package-lock.json
 └── vite.config.js
 ```
 

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\LogAuditJob;
 use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
@@ -16,15 +17,9 @@ class AuditLogService
     public const SYSTEM_USER_ID = 1;
 
     /**
-     * Log an action with automatic user resolution and error handling
-     *
-     * @param string $action The action performed
-     * @param string $entityType The model class being modified
-     * @param int $entityId The ID of the entity
-     * @param array|null $oldValues Previous state
-     * @param array|null $newValues New state
-     * @param int|null $performedBy Override user ID
-     * @return AuditLog|null Returns null on failure (logs error)
+     * Log an action asynchronously via queue.
+     * The audit record is dispatched to the 'audit-logs' queue —
+     * the request thread never blocks on the INSERT.
      */
     public static function log(
         string $action,
@@ -32,35 +27,28 @@ class AuditLogService
         int $entityId,
         ?array $oldValues = null,
         ?array $newValues = null,
-        ?int $performedBy = null
-    ): ?AuditLog {
+        ?int $performedBy = null,
+    ): void {
         try {
             $userId = self::resolveUserId($performedBy, $entityType, $newValues, $oldValues);
 
-            // Validate user exists - Robust check for DB integrity
-            if (!User::where('id', $userId)->exists()) {
-                Log::warning("AuditLog: User ID {$userId} not found, using system user");
-                $userId = self::SYSTEM_USER_ID;
-            }
-
-            return AuditLog::create([
-                'action' => $action,
-                'entity_type' => $entityType,
-                'entity_id' => $entityId,
-                'performed_by' => $userId,
-                'old_values' => $oldValues,
-                'new_values' => $newValues,
-                'ip_address' => Request::ip() ?? '127.0.0.1',
-                'user_agent' => Request::userAgent() ?? 'System',
-            ]);
+            LogAuditJob::dispatch(
+                action: $action,
+                entityType: $entityType,
+                entityId: $entityId,
+                oldValues: $oldValues,
+                newValues: $newValues,
+                performedBy: $userId,
+                ipAddress: Request::ip() ?? '127.0.0.1',
+                userAgent: Request::userAgent() ?? 'System',
+            )->onQueue('audit-logs');
         } catch (\Exception $e) {
-            Log::error('AuditLogService::log failed', [
-                'error' => $e->getMessage(),
-                'action' => $action,
+            Log::error('AuditLogService::log failed to dispatch', [
+                'error'       => $e->getMessage(),
+                'action'      => $action,
                 'entity_type' => $entityType,
-                'entity_id' => $entityId,
+                'entity_id'   => $entityId,
             ]);
-            return null;
         }
     }
 
@@ -71,7 +59,7 @@ class AuditLogService
         ?int $overrideId,
         string $entityType,
         ?array $newValues,
-        ?array $oldValues
+        ?array $oldValues,
     ): int {
         // Priority 1: Explicit override (must be valid positive integer)
         if ($overrideId !== null && $overrideId > 0 && is_int($overrideId)) {
@@ -114,17 +102,17 @@ class AuditLogService
         string $entityType,
         int $entityId,
         ?array $oldValues = null,
-        ?array $newValues = null
-    ): ?AuditLog {
-        return self::log($action, $entityType, $entityId, $oldValues, $newValues, self::SYSTEM_USER_ID);
+        ?array $newValues = null,
+    ): void {
+        self::log($action, $entityType, $entityId, $oldValues, $newValues, self::SYSTEM_USER_ID);
     }
 
     /**
      * Log login event
      */
-    public static function logLogin(int $userId, array $context = []): ?AuditLog
+    public static function logLogin(int $userId, array $context = []): void
     {
-        return self::log(
+        self::log(
             'login',
             User::class,
             $userId,
@@ -137,9 +125,9 @@ class AuditLogService
     /**
      * Log logout event
      */
-    public static function logLogout(int $userId): ?AuditLog
+    public static function logLogout(int $userId): void
     {
-        return self::log(
+        self::log(
             'logout',
             User::class,
             $userId,
@@ -152,9 +140,9 @@ class AuditLogService
     /**
      * Log role attachment
      */
-    public static function logRoleAttached(int $userId, array $roleData, ?int $performedBy = null): ?AuditLog
+    public static function logRoleAttached(int $userId, array $roleData, ?int $performedBy = null): void
     {
-        return self::log(
+        self::log(
             'role_attached',
             User::class,
             $userId,
@@ -167,9 +155,9 @@ class AuditLogService
     /**
      * Log role detachment
      */
-    public static function logRoleDetached(int $userId, array $roleData, ?int $performedBy = null): ?AuditLog
+    public static function logRoleDetached(int $userId, array $roleData, ?int $performedBy = null): void
     {
-        return self::log(
+        self::log(
             'role_detached',
             User::class,
             $userId,
@@ -182,9 +170,9 @@ class AuditLogService
     /**
      * Log permission attachment
      */
-    public static function logPermissionAttached(int $userId, array $permissionData, ?int $performedBy = null): ?AuditLog
+    public static function logPermissionAttached(int $userId, array $permissionData, ?int $performedBy = null): void
     {
-        return self::log(
+        self::log(
             'permission_attached',
             User::class,
             $userId,
@@ -197,9 +185,9 @@ class AuditLogService
     /**
      * Log permission detachment
      */
-    public static function logPermissionDetached(int $userId, array $permissionData, ?int $performedBy = null): ?AuditLog
+    public static function logPermissionDetached(int $userId, array $permissionData, ?int $performedBy = null): void
     {
-        return self::log(
+        self::log(
             'permission_detached',
             User::class,
             $userId,

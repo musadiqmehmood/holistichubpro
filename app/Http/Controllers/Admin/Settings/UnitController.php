@@ -41,7 +41,7 @@ class UnitController extends Controller
             'status'      => 'sometimes|boolean',
         ]);
 
-        $unit = Unit::create($validated);
+        $unit = Unit::create(array_merge($validated, ['created_by' => auth()->id()]));
 
         AuditLogService::log('created', Unit::class, $unit->id, null, $unit->toArray());
 
@@ -161,7 +161,7 @@ class UnitController extends Controller
 
                 $result = Unit::firstOrCreate(
                     ['name' => trim($data['name'])],
-                    ['description' => $data['description'] ?? null, 'status' => $status]
+                    ['description' => $data['description'] ?? null, 'status' => $status, 'created_by' => auth()->id()]
                 );
 
                 $result->wasRecentlyCreated ? $imported++ : $skipped++;
