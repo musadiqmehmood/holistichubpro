@@ -9,20 +9,15 @@ use Illuminate\Support\Facades\DB;
 use App\Models\AuditLog;
 use App\Services\AuditLogService;
 
-// CRITICAL: Use Spatie's Role model
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 
 class RoleController extends Controller
 {
-    /**
-     * List all roles with their permissions
-     */
     public function index()
     {
         $this->authorize('viewAny', Role::class);
 
-        // CRITICAL FIX: Load permissions relationship and return as array
         $roles = Role::with('permissions')->get()->map(function ($role) {
             return [
                 'id' => $role->id,
@@ -36,17 +31,14 @@ class RoleController extends Controller
                         'name' => $permission->name,
                         'guard_name' => $permission->guard_name,
                     ];
-                })->toArray(), // Ensure this is an array
+                })->toArray(),
                 'permissions_count' => $role->permissions->count(),
             ];
         });
 
-        return response()->json($roles); // Return array directly, not wrapped in object
+        return response()->json($roles);
     }
 
-    /**
-     * Store new role with permissions
-     */
     public function store(Request $request)
     {
         $this->authorize('create', Role::class);
@@ -55,7 +47,7 @@ class RoleController extends Controller
             'name' => 'required|string|unique:roles,name',
             'guard_name' => 'nullable|string|in:web,api,sanctum',
             'permissions' => 'nullable|array',
-            'permissions.*' => 'string|exists:permissions,name', // Validate permission names
+            'permissions.*' => 'string|exists:permissions,name',
         ]);
 
         $guardName = $validated['guard_name'] ?? 'web';
@@ -66,12 +58,10 @@ class RoleController extends Controller
                 'guard_name' => $guardName,
             ]);
 
-            // Sync permissions if provided (by name)
             if (!empty($validated['permissions'])) {
                 $role->syncPermissions($validated['permissions']);
             }
 
-            // EXPLICIT AUDIT LOG - Using Service
             AuditLogService::log('created', Role::class, $role->id, null, [
                 'name' => $role->name,
                 'guard_name' => $role->guard_name,
@@ -81,7 +71,6 @@ class RoleController extends Controller
             return $role;
         });
 
-        // Clear permission cache (outside transaction — harmless if stale)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return response()->json([
@@ -90,9 +79,6 @@ class RoleController extends Controller
         ], 201);
     }
 
-    /**
-     * Show single role with permissions
-     */
     public function show(Role $role)
     {
         $this->authorize('view', $role);
@@ -113,15 +99,11 @@ class RoleController extends Controller
         ]);
     }
 
-    /**
-     * Update role and permissions
-     */
     public function update(Request $request, Role $role)
     {
         $this->authorize('update', $role);
 
-        // Prevent updating super-admin
-        if ($role->name === 'super-admin') {
+        if ($role->name === config('rbac.super_admin_role')) {
             return response()->json([
                 'message' => 'Cannot modify system protected role',
             ], 403);
@@ -137,7 +119,7 @@ class RoleController extends Controller
             'name' => 'sometimes|string|unique:roles,name,' . $role->id,
             'guard_name' => 'nullable|string|in:web,api,sanctum',
             'permissions' => 'sometimes|array',
-            'permissions.*' => 'string|exists:permissions,name', // Validate permission names
+            'permissions.*' => 'string|exists:permissions,name',
         ]);
 
         DB::transaction(function () use ($role, $validated, $oldValues) {
@@ -149,12 +131,10 @@ class RoleController extends Controller
             }
             $role->save();
 
-            // Sync permissions if provided (by name)
             if (isset($validated['permissions'])) {
                 $role->syncPermissions($validated['permissions']);
             }
 
-            // EXPLICIT AUDIT LOG - Using Service
             AuditLogService::log('updated', Role::class, $role->id, $oldValues, [
                 'name' => $role->name,
                 'guard_name' => $role->guard_name,
@@ -162,7 +142,6 @@ class RoleController extends Controller
             ]);
         });
 
-        // Clear cache (outside transaction — harmless if stale)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return response()->json([
@@ -171,15 +150,11 @@ class RoleController extends Controller
         ]);
     }
 
-    /**
-     * Delete role
-     */
     public function destroy(Request $request, Role $role)
     {
         $this->authorize('delete', $role);
 
-        // Prevent deleting super-admin role
-        if ($role->name === 'super-admin') {
+        if ($role->name === config('rbac.super_admin_role')) {
             return response()->json([
                 'message' => 'Cannot delete system protected role',
             ], 403);
@@ -191,7 +166,6 @@ class RoleController extends Controller
             'permissions' => $role->permissions->pluck('name')->toArray(),
         ];
 
-        // Check if role has users
         $userCount = DB::table('model_has_roles')
             ->where('role_id', $role->id)
             ->count();
@@ -204,13 +178,10 @@ class RoleController extends Controller
         }
 
         DB::transaction(function () use ($role, $oldValues) {
-            // EXPLICIT AUDIT LOG - Using Service
             AuditLogService::log('deleted', Role::class, $role->id, $oldValues, null);
-
             $role->delete();
         });
 
-        // Clear cache (outside transaction — harmless if stale)
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
         return response()->json(['message' => 'Role deleted successfully']);

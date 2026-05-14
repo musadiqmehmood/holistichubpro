@@ -1,17 +1,34 @@
 import api from './axios'
 
 /**
+ * Escape a single value for RFC 4180-compliant CSV.
+ * Wraps in double-quotes if the value contains commas,
+ * newlines, or double-quotes (which are doubled).
+ */
+function escapeCsv(val) {
+    const str = String(val ?? '')
+    if (/[\",\n\r]/.test(str)) {
+        return '"' + str.replace(/"/g, '""') + '"'
+    }
+    return str
+}
+
+/**
  * Helper: trigger client-side CSV download from a JSON array.
  * No external library — native Blob API only.
+ * Includes UTF-8 BOM so Excel opens non-ASCII chars correctly.
  */
 export function downloadCsv(rows, filename) {
-    if (!rows || !rows.length) return
+    if (!rows || !rows.length || !rows[0]) return
     const headers = Object.keys(rows[0])
-    const csv = [
-        headers.join(','),
-        ...rows.map(r => headers.map(h => JSON.stringify(r[h] ?? '')).join(',')),
-    ].join('\n')
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
+    const lines = [
+        headers.map(escapeCsv).join(','),
+        ...rows.map(r => headers.map(h => escapeCsv(r[h])).join(',')),
+    ]
+    // Prepend UTF-8 BOM so Excel renders special characters correctly
+    const bom = '\uFEFF'
+    const csv = bom + lines.join('\n')
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }))
     const a   = Object.assign(document.createElement('a'), { href: url, download: filename })
     document.body.appendChild(a)
     a.click()

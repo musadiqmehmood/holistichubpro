@@ -9,7 +9,7 @@ class TaxGroupPolicy
 {
     public function before(User $user): ?bool
     {
-        return $user->hasRole('super-admin') ? true : null;
+        return $user->hasRole(config('rbac.super_admin_role')) ? true : null;
     }
 
     public function viewAny(User $user): bool

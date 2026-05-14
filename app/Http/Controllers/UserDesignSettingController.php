@@ -21,13 +21,40 @@ class UserDesignSettingController extends Controller
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'settings' => 'required|array',
-            // ✅ no restriction on value types – booleans, numbers, strings are all allowed
+            'settings'                        => 'required|array',
+            // Every key below is whitelisted — anything else is silently ignored
+            'settings.themeMode'              => 'nullable|in:light,dark',
+            'settings.primaryColor'           => 'nullable|string|max:7|starts_with:#',
+            'settings.secondaryColor'         => 'nullable|string|max:7|starts_with:#',
+            'settings.backgroundColor'        => 'nullable|string|max:7|starts_with:#',
+            'settings.surfaceColor'           => 'nullable|string|max:7|starts_with:#',
+            'settings.textPrimary'            => 'nullable|string|max:7|starts_with:#',
+            'settings.textSecondary'          => 'nullable|string|max:7|starts_with:#',
+            'settings.headingColor'           => 'nullable|string|max:7|starts_with:#',
+            'settings.subheadingColor'        => 'nullable|string|max:7|starts_with:#',
+            'settings.paragraphColor'         => 'nullable|string|max:7|starts_with:#',
+            'settings.borderColor'            => 'nullable|string|max:7|starts_with:#',
+            'settings.menuBg'                 => 'nullable|string|max:7|starts_with:#',
+            'settings.menuText'               => 'nullable|string|max:7|starts_with:#',
+            'settings.btnBg'                  => 'nullable|string|max:7|starts_with:#',
+            'settings.btnText'              => 'nullable|string|max:7|starts_with:#',
+            'settings.btnHoverBg'           => 'nullable|string|max:7|starts_with:#',
+            'settings.fontFamily'           => 'nullable|string|max:100',
+            'settings.fontSizeBase'         => 'nullable|string|max:10',
+            'settings.fontSizeHeadingScale' => 'nullable|string|max:10',
+            'settings.bodyLineHeight'       => 'nullable|string|max:10',
+            'settings.letterSpacing'        => 'nullable|string|max:20',
         ]);
+
+        // Merge validated subset with defaults so unknown keys never reach DB
+        $settings = array_intersect_key(
+            $validated['settings'],
+            $this->defaultSettings()
+        );
 
         $setting = UserDesignSetting::updateOrCreate(
             ['user_id' => $request->user()->id],
-            ['settings' => $validated['settings']]
+            ['settings' => array_merge($this->defaultSettings(), $settings)]
         );
 
         return response()->json([

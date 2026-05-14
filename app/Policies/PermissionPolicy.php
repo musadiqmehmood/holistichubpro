@@ -12,10 +12,9 @@ class PermissionPolicy
 
     public function before(User $user, string $ability): ?bool
     {
-        if ($user->hasRole('super-admin')) {
-            // Protect critical permissions
+        if ($user->hasRole(config('rbac.super_admin_role'))) {
             if ($ability === 'delete') {
-                return null; // Let delete() handle protection
+                return null;
             }
             return true;
         }
@@ -44,7 +43,6 @@ class PermissionPolicy
 
     public function delete(User $user, Permission $permission): bool
     {
-        // Protect critical system permissions
         $protectedPermissions = ['roles.manage', 'permissions.manage', 'users.manage'];
         if (in_array($permission->name, $protectedPermissions)) {
             return false;

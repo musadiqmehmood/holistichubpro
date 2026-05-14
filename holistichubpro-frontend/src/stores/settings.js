@@ -42,6 +42,10 @@ export const useSettingsStore = defineStore('settings', () => {
         currencySymbol: '$',
         currencyPlacement: 'before',
         decimals: 2,
+        // Button defaults — missing in original, referenced in applyThemeVariables()
+        btnBg: '#6366f1',
+        btnText: '#ffffff',
+        btnHoverBg: '#4f46e5',
     })
 
     // Resource lists (unchanged)
@@ -239,7 +243,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
     // ── Server‑Synced Dynamic Settings (Reload‑Proof) ──
     const fetchDynamicSettings = async () => {
-        // Step 1: Pehle localStorage se fast load (UI fatafat react kare)
+        // Step 1: Load from localStorage first for instant UI response
         const localKey = dynamicSettingsKey()
         const localData = localStorage.getItem(localKey)
         let localApplied = false
@@ -251,53 +255,53 @@ export const useSettingsStore = defineStore('settings', () => {
             } catch (e) { /* ignore */ }
         }
 
-        // Step 2: Server se latest settings laao (yeh priority lega)
+        // Step 2: Fetch latest settings from server (takes priority)
         try {
             const response = await designSettingsApi.get()
             const serverSettings = response.data
 
-            // Agar server ne kuch bheja hai (empty object nahi hai) aur useable hai to turant apply karo
+            // If server returned usable data, apply immediately
             if (serverSettings && Object.keys(serverSettings).length > 0) {
-                // Server data ko directly assign karo (localStorage se purana data replace hoga)
+                // Server data replaces localStorage copy
                 dynamicSettings.value = { ...dynamicSettings.value, ...serverSettings }
-                // LocalStorage ko bhi update karo taake agli baar fast load ho
+                // Persist to localStorage so next load is instant
                 localStorage.setItem(localKey, JSON.stringify(dynamicSettings.value))
                 applyThemeVariables()
-                console.log('✅ Design settings server se loaded')
+                console.log('✅ Design settings loaded from server')
             } else {
-                // Agar server ne empty bheja, aur local se kuch load nahi hua to default hi rahega
+                // Server returned empty and nothing in localStorage — defaults remain
                 if (!localApplied) {
                     console.log('ℹ️ No settings found, using defaults')
                 }
             }
         } catch (error) {
-            // Server fail, agar local se load ho chuka hai to wo chalega, nahi to default rahega
-            console.warn('⚠️ Server design settings load nahi hue, localStorage se kaam chal raha hai')
+            // Server failed — localStorage copy continues to work, else fall back to defaults
+            console.warn('⚠️ Server design settings failed, using localStorage fallback')
             if (!localApplied) {
-                // Agar localStorage mein bhi kuch nahi tha, to default dynamicSettings hi active rahegi
+                // Nothing in localStorage either — factory defaults are used
                 applyThemeVariables()
             }
         }
     }
 
     const updateDynamicSetting = async (key, value) => {
-        // Turant state update
+        // Immediate state update
         dynamicSettings.value[key] = value
 
-        // Hamesha localStorage mein save karo (sabse tez, offline‑proof)
+        // Always persist to localStorage first — fastest, works offline
         const localKey = dynamicSettingsKey()
         localStorage.setItem(localKey, JSON.stringify(dynamicSettings.value))
 
-        // Background mein server ko bhi save karo (fire‑and‑forget)
+        // Fire-and-forget: sync to server in the background
         try {
             await designSettingsApi.save(dynamicSettings.value)
-            console.log('✅ Design settings server par save ho gayi')
+            console.log('✅ Design settings saved to server')
         } catch (error) {
-            // Server fail – koi tension nahi, localStorage mein toh safe hai
-            console.warn('⚠️ Design settings server par save nahi hui, agle sync tak local hi rahegi')
+            // Server failed — no problem, data is safe in localStorage
+            console.warn('⚠️ Design settings not saved to server, will retry on next sync')
         }
 
-        // Turant theme apply karo
+        // Apply theme variables immediately
         applyThemeVariables()
     }
 
@@ -346,9 +350,21 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
 
-    // Small helper (optional)
+    /**
+     * Darken or lighten a hex colour.
+     * @param {string} hex   — 6-char hex with leading # (e.g. '#6366f1')
+     * @param {number} amount — negative = darker, positive = lighter
+     * @returns {string}    — adjusted hex colour
+     */
     function adjustColor(hex, amount) {
-        return hex // Stub – you can implement a real darken/lighten later
+        const num = parseInt(hex.replace('#', ''), 16)
+        if (Number.isNaN(num)) return hex
+
+        const r = Math.min(255, Math.max(0, (num >> 16) + amount))
+        const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amount))
+        const b = Math.min(255, Math.max(0, (num & 0x0000FF) + amount))
+
+        return '#' + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)
     }
 
     // ── Resource CRUD (unchanged) ───────────────────────────────────────
@@ -407,4 +423,3 @@ export const useSettingsStore = defineStore('settings', () => {
         fetchCurrencies, createCurrency, updateCurrency, deleteCurrency, importCurrencies, exportCurrencies,
     }
 })
-

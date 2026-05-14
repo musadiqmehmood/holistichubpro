@@ -3,10 +3,9 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import api from '@/api/axios'
 import { authApi } from '@/api/auth'
-import { useSettingsStore } from '@/stores/settings'   // ✅ ADDED: for per‑user theme
+import { useSettingsStore } from '@/stores/settings'
 
 export const useAuthStore = defineStore('auth', () => {
-    // State
     const user = ref(null)
     const token = ref(localStorage.getItem('token') || null)
     const loading = ref(false)
@@ -14,13 +13,11 @@ export const useAuthStore = defineStore('auth', () => {
     const requiresPasswordChange = ref(false)
     const requiresVerification = ref(false)
 
-    // ✅ F-15: Load requiresPasswordChange from localStorage
     const storedRequiresChange = localStorage.getItem('requires_password_change')
     if (storedRequiresChange === 'true') {
         requiresPasswordChange.value = true
     }
 
-    // Load user from localStorage on init
     const storedUser = localStorage.getItem('user')
     if (storedUser) {
         try {
@@ -32,7 +29,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // Getters
     const isAuthenticated = computed(() => !!token.value && !!user.value)
 
     const isSuperAdmin = computed(() => {
@@ -45,7 +41,6 @@ export const useAuthStore = defineStore('auth', () => {
         return user.value.roles.some(role => ['admin', 'super-admin'].includes(role.name))
     })
 
-    // ✅ F-13: Lowercase all permissions for case‑insensitive comparison
     const userPermissions = computed(() => {
         if (!user.value) return []
 
@@ -81,7 +76,6 @@ export const useAuthStore = defineStore('auth', () => {
         return user.value?.branch || null
     })
 
-    // ✅ F-16: Return false for falsy permission inputs
     const hasPermission = (permission) => {
         if (!permission) return false
         if (isSuperAdmin.value) return true
@@ -95,7 +89,6 @@ export const useAuthStore = defineStore('auth', () => {
         return userRoles.value.includes(role)
     }
 
-    // Actions
     const setToken = (newToken) => {
         token.value = newToken
         if (newToken) {
@@ -107,7 +100,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // ✅ F-15: Persist requiresPasswordChange
     const setRequiresPasswordChange = (value) => {
         requiresPasswordChange.value = value
         if (value) {
@@ -134,7 +126,6 @@ export const useAuthStore = defineStore('auth', () => {
         error.value = null
     }
 
-    // ✅ Fixed login with password expiry handling
     const login = async (credentials) => {
         loading.value = true
         error.value = null
@@ -150,26 +141,22 @@ export const useAuthStore = defineStore('auth', () => {
                 setToken(authToken)
                 setUser(userData)
 
-                // ✅ ADDED: Reload user‑specific design settings after login
-                const settingsStore = useSettingsStore()
-                await settingsStore.fetchDynamicSettings()
-
+                // Design settings are fetched by the router navigation guard
+                // via fetchUser() — no need to double-fetch here.
                 return { success: true }
             }
 
-            // Fallback (should not happen)
             return { success: false, error: 'Invalid response from server' }
         } catch (err) {
             if (import.meta.env.DEV) console.error('[AuthStore] Login error:', err)
 
-            // ✅ Handle password expiry (403 with requires_password_change)
             if (err.response?.status === 403) {
                 const data = err.response.data
                 if (data?.requires_password_change) {
                     const tempToken = data?.password_token
                     if (tempToken) {
                         setToken(tempToken)
-                        setRequiresPasswordChange(true)  // ✅ This must be called
+                        setRequiresPasswordChange(true)
                         return {
                             success: false,
                             requiresPasswordChange: true,
@@ -179,7 +166,6 @@ export const useAuthStore = defineStore('auth', () => {
                 }
             }
 
-            // Handle other errors
             let errorMessage = 'Login failed'
             if (err.response) {
                 switch (err.response.status) {
@@ -211,7 +197,6 @@ export const useAuthStore = defineStore('auth', () => {
             if (import.meta.env.DEV) console.log('[AuthStore] fetchUser response:', response.data)
             setUser(response.data)
 
-            // ✅ ADDED: Reload user‑specific design settings after fetching user
             const settingsStore = useSettingsStore()
             settingsStore.fetchDynamicSettings()
 
@@ -226,12 +211,10 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // ✅ Fixed changePassword to use correct field names
     const changePassword = async (data) => {
         loading.value = true
         error.value = null
         try {
-            // data should contain: current_password, password, password_confirmation
             const response = await authApi.changePassword(data)
             if (response.data?.requires_relogin) {
                 clearAuth()
@@ -268,18 +251,13 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    // ✅ F-17: Removed debug watch(user, ...)
-
     return {
-        // State
         user,
         token,
         loading,
         error,
         requiresPasswordChange,
         requiresVerification,
-
-        // Getters
         isAuthenticated,
         isSuperAdmin,
         isAdmin,
@@ -288,8 +266,6 @@ export const useAuthStore = defineStore('auth', () => {
         userBranch,
         hasPermission,
         hasRole,
-
-        // Actions
         login,
         logout,
         fetchUser,

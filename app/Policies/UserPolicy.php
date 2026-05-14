@@ -6,10 +6,9 @@ use App\Models\User;
 
 class UserPolicy
 {
-    // ✅ Updated: super-admin instead of admin
     public function before(User $user): ?bool
     {
-        if ($user->hasRole('super-admin')) {
+        if ($user->hasRole(config('rbac.super_admin_role'))) {
             return true;
         }
         return null;
@@ -22,7 +21,6 @@ class UserPolicy
 
     public function view(User $user, User $model): bool
     {
-        // Can view own profile or have permission
         return $user->id === $model->id || $user->hasPermissionTo('users.view');
     }
 
@@ -33,8 +31,7 @@ class UserPolicy
 
     public function update(User $user, User $model): bool
     {
-        // Cannot update super-admin unless you're super-admin (handled by before)
-        if ($model->hasRole('super-admin')) {
+        if ($model->hasRole(config('rbac.super_admin_role'))) {
             return false;
         }
         return $user->hasPermissionTo('users.edit');
@@ -42,13 +39,11 @@ class UserPolicy
 
     public function delete(User $user, User $model): bool
     {
-        // Cannot delete self
         if ($user->id === $model->id) {
             return false;
         }
 
-        // Cannot delete super-admin
-        if ($model->hasRole('super-admin')) {
+        if ($model->hasRole(config('rbac.super_admin_role'))) {
             return false;
         }
 

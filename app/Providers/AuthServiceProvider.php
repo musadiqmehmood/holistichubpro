@@ -32,22 +32,14 @@ use Spatie\Permission\Models\Role;
 
 class AuthServiceProvider extends ServiceProvider
 {
-    /**
-     * All model → policy mappings for the application.
-     */
     protected $policies = [
-        // ── Core ──────────────────────────────────────────────────────────────
         User::class       => UserPolicy::class,
         Role::class       => RolePolicy::class,
         Permission::class => PermissionPolicy::class,
         AuditLog::class   => AuditLogPolicy::class,
-
-        // ── Settings: singleton records ────────────────────────────────────────
         SiteSetting::class  => SiteSettingPolicy::class,
         StoreSetting::class => StoreSettingPolicy::class,
         SmtpSetting::class  => SmtpSettingPolicy::class,
-
-        // ── Settings: reference tables ─────────────────────────────────────────
         Tax::class         => TaxPolicy::class,
         TaxGroup::class    => TaxGroupPolicy::class,
         Unit::class        => UnitPolicy::class,
@@ -59,30 +51,17 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        // ── Super-admin bypass ─────────────────────────────────────────────────
-        // Runs before every Gate check.  Returning true short-circuits all
-        // policy checks; returning null passes control to the policy.
         Gate::before(function (User $user, string $ability): ?bool {
-            if ($user->hasRole('super-admin')) {
+            if ($user->hasRole(config('rbac.super_admin_role'))) {
                 return true;
             }
             return null;
         });
 
-        // ── Singleton settings gate ────────────────────────────────────────────
-        // Allows controllers to call:
-        //   $this->authorize('manage', SiteSetting::class)
-        //   $this->authorize('manage', StoreSetting::class)
-        //   $this->authorize('manage', SmtpSetting::class)
-        // super-admin is already bypassed above, so only non-super-admin users
-        // are evaluated here.
         Gate::define('manage', function (User $user, string $model): bool {
             return $user->hasPermissionTo('settings.manage');
         });
 
-        // ── Custom validators ──────────────────────────────────────────────────
-
-        // Enforces: min 8 chars, 1 uppercase, 1 lowercase, 1 digit, 1 special char
         Validator::extend(
             'salon_password',
             function (string $attribute, mixed $value): bool {
@@ -94,7 +73,6 @@ class AuthServiceProvider extends ServiceProvider
             'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.'
         );
 
-        // Prevents re-use of the last 5 passwords stored in password_histories
         Validator::extend(
             'not_recent_password',
             function (string $attribute, mixed $value): bool {
