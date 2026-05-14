@@ -66,11 +66,20 @@ class AuthController extends Controller
         }
 
         DB::transaction(function () use ($user, $request) {
+            $oldHash = $user->password;
+
             $user->update([
                 'password'            => Hash::make($request->password),
                 'password_changed_at' => now(),
             ]);
 
+            // Store the OLD hash so the user cannot immediately revert
+            PasswordHistory::create([
+                'user_id'  => $user->id,
+                'password' => $oldHash,
+            ]);
+
+            // Also store the NEW hash for future change checks
             PasswordHistory::create([
                 'user_id'  => $user->id,
                 'password' => $user->password,
