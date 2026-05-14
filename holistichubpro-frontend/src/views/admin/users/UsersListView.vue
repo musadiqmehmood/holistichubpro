@@ -213,15 +213,21 @@
                 </template>
             </AppTable>
 
-            <AppPagination
-                v-if="pagination.last_page > 1"
-                :current-page="pagination.current_page"
-                :last-page="pagination.last_page"
-                :total="pagination.total"
-                :from="pagination.from"
-                :to="pagination.to"
-                @change="handlePageChange"
-            />
+            <!-- Pagination Footer -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-4 px-2">
+                <div class="text-sm text-gray-500">
+                    Showing <strong>{{ pagination.from ?? 0 }}</strong> to <strong>{{ pagination.to ?? 0 }}</strong> of <strong>{{ pagination.total }}</strong> entries
+                </div>
+                <AppPagination
+                    v-if="pagination.last_page > 1"
+                    :current-page="pagination.current_page"
+                    :last-page="pagination.last_page"
+                    :total="pagination.total"
+                    :from="pagination.from"
+                    :to="pagination.to"
+                    @change="handlePageChange"
+                />
+            </div>
         </template>
 
         <UserFormModal
@@ -342,15 +348,17 @@ const fetchUsers = async () => {
     error.value = null
     try {
         const response = await usersApi.getAll(filters)
-        const responseData = response.data.data || response.data
-        users.value = Array.isArray(responseData) ? responseData : responseData.data || []
+        const payload = response.data
+        // ApiResponse paginated envelope: { success, message, data: [...], meta: {...} }
+        users.value = payload.data ?? []
 
+        const meta = payload.meta ?? payload
         Object.assign(pagination, {
-            current_page: response.data.current_page || 1,
-            last_page: response.data.last_page || 1,
-            total: response.data.total || 0,
-            from: response.data.from || 0,
-            to: response.data.to || 0
+            current_page: meta.current_page || 1,
+            last_page: meta.last_page || 1,
+            total: meta.total || 0,
+            from: meta.from || 0,
+            to: meta.to || 0
         })
     } catch (err) {
         error.value = err.response?.data?.message || 'CRITICAL: User Service Communication Failure.'

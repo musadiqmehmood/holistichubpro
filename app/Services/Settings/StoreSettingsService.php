@@ -29,6 +29,11 @@ class StoreSettingsService
     /**
      * Update or create store settings for a branch.
      * Handles logo/signature uploads and cleans up old files.
+     *
+     * @param StoreSetting $setting
+     * @param array        $validated Validated request data (except file fields)
+     * @param array        $files     Uploaded files keyed as 'store_logo' or 'signature'
+     * @return StoreSetting
      */
     public function updateOrCreate(StoreSetting $setting, array $validated, array $files): StoreSetting
     {
@@ -42,6 +47,7 @@ class StoreSettingsService
         $setting->fill($validated);
         $setting->save();
 
+        // Invalidate the cached options list so the next read is fresh
         Cache::forget('settings_options.branches');
 
         return $setting->fresh()->load('branch');

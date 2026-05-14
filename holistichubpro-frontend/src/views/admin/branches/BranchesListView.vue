@@ -71,15 +71,21 @@
                 </template>
             </AppTable>
 
-            <AppPagination
-                v-if="pagination.last_page > 1"
-                :current-page="pagination.current_page"
-                :last-page="pagination.last_page"
-                :total="pagination.total"
-                :from="pagination.from"
-                :to="pagination.to"
-                @change="changePage"
-            />
+            <!-- Pagination Footer -->
+            <div class="flex flex-col sm:flex-row justify-between items-center gap-3 px-6 py-4 border-t border-gray-100">
+                <div class="text-sm text-gray-500">
+                    Showing <strong>{{ pagination.from ?? 0 }}</strong> to <strong>{{ pagination.to ?? 0 }}</strong> of <strong>{{ pagination.total }}</strong> entries
+                </div>
+                <AppPagination
+                    v-if="pagination.last_page > 1"
+                    :current-page="pagination.current_page"
+                    :last-page="pagination.last_page"
+                    :total="pagination.total"
+                    :from="pagination.from"
+                    :to="pagination.to"
+                    @change="changePage"
+                />
+            </div>
         </AppCard>
 
         <!-- Create/Edit Modal -->
@@ -243,15 +249,17 @@ const fetchBranches = async (page = 1) => {
     try {
         const params = { page, per_page: pagination.value.per_page || 10 }
         const response = await branchesApi.getAll(params)
-        const data = response.data
-        branches.value = data.data || []
+        const payload = response.data
+        // ApiResponse paginated envelope: { success, message, data: [...], meta: {...} }
+        branches.value = payload.data ?? []
+        const meta = payload.meta ?? payload
         pagination.value = {
-            current_page: data.current_page || 1,
-            last_page: data.last_page || 1,
-            total: data.total || 0,
-            from: data.from || 0,
-            to: data.to || 0,
-            per_page: data.per_page || 10,
+            current_page: meta.current_page || 1,
+            last_page: meta.last_page || 1,
+            total: meta.total || 0,
+            from: meta.from || 0,
+            to: meta.to || 0,
+            per_page: meta.per_page || 10,
         }
     } catch (err) {
         error.value = err.response?.data?.message || err.message

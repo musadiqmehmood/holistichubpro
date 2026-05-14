@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\SmtpSetting;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -16,8 +17,7 @@ use Symfony\Component\Mime\Email;
 
 class SmtpSettingController extends Controller
 {
-    private const SENTINEL = '••••••••';
-
+    use ApiResponse;
     public function show(): JsonResponse
     {
         $setting = SmtpSetting::firstOrCreate([], [
@@ -29,7 +29,7 @@ class SmtpSettingController extends Controller
             'encryption' => 'tls',
         ]);
 
-        return response()->json($this->masked($setting));
+        return $this->success($this->masked($setting));
     }
 
     public function update(Request $request): JsonResponse
@@ -56,8 +56,9 @@ class SmtpSettingController extends Controller
 
         $old = $this->masked($setting);
 
+        // Only update password when client sends a non-null, non-empty value.
         $incomingPassword = $validated['password'] ?? null;
-        if ($incomingPassword === self::SENTINEL || empty($incomingPassword)) {
+        if ($incomingPassword === null || trim($incomingPassword) === '') {
             unset($validated['password']);
         }
 
@@ -77,7 +78,7 @@ class SmtpSettingController extends Controller
             $this->masked($setting->fresh())
         );
 
-        return response()->json($this->masked($setting->fresh()));
+        return $this->success($this->masked($setting->fresh()));
     }
 
     /**
@@ -89,16 +90,16 @@ class SmtpSettingController extends Controller
         $setting = SmtpSetting::first();
 
         if (!$setting || !$setting->status) {
-            return response()->json(['message' => 'SMTP is not enabled.'], 422);
+            return $this->unprocessable('SMTP is not enabled.');
         }
 
         if (empty($setting->host) || empty($setting->username)) {
-            return response()->json(['message' => 'SMTP host and username must be configured before testing.'], 422);
+            return $this->unprocessable('SMTP host and username must be configured before testing.');
         }
 
         $user = Auth::user();
         if (!$user || empty($user->email)) {
-            return response()->json(['message' => 'Authenticated user email not found.'], 422);
+            return $this->unprocessable('Authenticated user email not found.');
         }
         $recipient = $user->email;
 
@@ -138,7 +139,7 @@ class SmtpSettingController extends Controller
                 'port'      => $setting->port,
             ]);
 
-            return response()->json(['message' => 'Test email sent to ' . $recipient]);
+            return $this->success(null, 'Test email sent to ' . $recipient);
         } catch (\Throwable $e) {
             Log::error('SMTP test failed', [
                 'error' => $e->getMessage(),
@@ -151,14 +152,19 @@ class SmtpSettingController extends Controller
                 'error'     => $e->getMessage(),
             ]);
 
-            return response()->json(['message' => 'Send failed: ' . $e->getMessage()], 500);
+            return $this->serverError('Send failed: ' . $e->getMessage());
         }
     }
 
+    /**
+     * Strip the raw password from the response.
+     * Frontend should treat password === null as "not configured"
+     * and any non-null value as "configured (hidden)".
+     */
     private function masked(SmtpSetting $setting): array
     {
         $data             = $setting->toArray();
-        $data['password'] = $setting->password ? self::SENTINEL : null;
+        $data['password'] = $setting->password ? '__configured__' : null;
         return $data;
     }
 }

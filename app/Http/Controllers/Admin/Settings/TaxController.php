@@ -14,6 +14,11 @@ class TaxController extends Controller
 {
     use ApiResponse;
 
+    /**
+     * GET /api/v1/admin/taxes
+     *
+     * Supports: ?search, ?status (0|1), ?sort_by, ?sort_dir, ?per_page
+     */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Tax::class);
@@ -28,6 +33,9 @@ class TaxController extends Controller
         return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
+    /**
+     * POST /api/v1/admin/taxes
+     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Tax::class);
@@ -49,12 +57,19 @@ class TaxController extends Controller
         return $this->created($tax);
     }
 
+    /**
+     * GET /api/v1/admin/taxes/{tax}
+     */
     public function show(Tax $tax): JsonResponse
     {
         $this->authorize('view', $tax);
+
         return $this->success($tax);
     }
 
+    /**
+     * PUT /api/v1/admin/taxes/{tax}
+     */
     public function update(Request $request, Tax $tax): JsonResponse
     {
         $this->authorize('update', $tax);
@@ -63,6 +78,9 @@ class TaxController extends Controller
             'name'       => 'sometimes|string|max:255|unique:taxes,name,' . $tax->id,
             'percentage' => 'sometimes|numeric|min:0|max:100',
             'status'     => 'sometimes|boolean',
+        ], [
+            'percentage.min' => 'Tax percentage cannot be negative.',
+            'percentage.max' => 'Tax percentage cannot exceed 100%.',
         ]);
 
         $old = $tax->toArray();
@@ -73,6 +91,9 @@ class TaxController extends Controller
         return $this->updated($tax->fresh());
     }
 
+    /**
+     * DELETE /api/v1/admin/taxes/{tax}
+     */
     public function destroy(Tax $tax): JsonResponse
     {
         $this->authorize('delete', $tax);
@@ -86,6 +107,11 @@ class TaxController extends Controller
         return $this->deleted('Tax deleted successfully');
     }
 
+    /**
+     * GET /api/v1/admin/taxes/export
+     *
+     * Returns all matching taxes as a flat JSON array for client-side CSV export.
+     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Tax::class);
@@ -101,6 +127,12 @@ class TaxController extends Controller
         return $this->success($data);
     }
 
+    /**
+     * POST /api/v1/admin/taxes/import
+     *
+     * Accepts a CSV file (columns: name, percentage, status).
+     * Skips duplicate names (firstOrCreate).
+     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', Tax::class);

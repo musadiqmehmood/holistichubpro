@@ -215,7 +215,7 @@
             <!-- Pagination -->
             <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center">
                 <div class="text-sm text-gray-600">
-                    Showing {{ pagination.from || 0 }} to {{ pagination.to || 0 }} of {{ pagination.total }} entries
+                    Showing {{ pagination.from ?? 0 }} to {{ pagination.to ?? 0 }} of {{ pagination.total }} entries
                     <span v-if="isSuperAdmin && selectedLogs.length > 0" class="ml-2 text-primary-600 font-medium">
                         ({{ selectedLogs.length }} selected)
                     </span>
@@ -495,9 +495,11 @@ const fetchFilterOptions = async () => {
     try {
         error.value = null
         const response = await auditApi.getFilters()
-        filterOptions.actions = response.data?.actions || []
-        filterOptions.entity_types = response.data?.entity_types || []
-        filterOptions.performers = response.data?.performers || []
+        // ApiResponse envelope: { success, message, data: { actions, entity_types, performers } }
+        const payload = response.data?.data ?? response.data
+        filterOptions.actions = payload?.actions || []
+        filterOptions.entity_types = payload?.entity_types || []
+        filterOptions.performers = payload?.performers || []
     } catch (err) {
         console.error('Failed to load filter options:', err)
         if (err.response?.status !== 401) {
@@ -517,15 +519,17 @@ const fetchLogs = async () => {
             per_page: pagination.value.per_page
         })
 
-        const data = response.data
-        logs.value = data.data || []
+        const payload = response.data
+        // ApiResponse paginated envelope: { success, message, data: [...], meta: {...} }
+        logs.value = payload.data ?? []
+        const meta = payload.meta ?? payload
         pagination.value = {
-            current_page: data.current_page || 1,
-            last_page: data.last_page || 1,
-            total: data.total || 0,
-            per_page: data.per_page || 10,
-            from: data.from || 0,
-            to: data.to || 0
+            current_page: meta.current_page ?? 1,
+            last_page: meta.last_page ?? 1,
+            total: meta.total ?? 0,
+            per_page: meta.per_page ?? 10,
+            from: meta.from ?? 0,
+            to: meta.to ?? 0
         }
 
         // Clear orphaned selections

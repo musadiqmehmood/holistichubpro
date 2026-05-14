@@ -9,31 +9,31 @@ class PaymentTypePolicy
 {
     public function before(User $user): ?bool
     {
-        return $user->hasRole(config('rbac.super_admin_role')) ? true : null;
+        return $user->hasRoleInBranch(config('rbac.super_admin_role')) ? true : null;
     }
 
     public function viewAny(User $user): bool
     {
-        return $user->hasPermissionTo('payment_types.view');
+        return $user->hasPermissionInBranch('payment_types.view');
     }
 
     public function view(User $user, PaymentType $paymentType): bool
     {
-        return $user->hasPermissionTo('payment_types.view');
+        return $user->hasPermissionInBranch('payment_types.view');
     }
 
     public function create(User $user): bool
     {
-        return $user->hasPermissionTo('payment_types.create');
+        return $user->hasPermissionInBranch('payment_types.create');
     }
 
     public function update(User $user, PaymentType $paymentType): bool
     {
-        return $user->hasPermissionTo('payment_types.edit');
+        return $user->hasPermissionInBranch('payment_types.edit');
     }
 
     public function delete(User $user, PaymentType $paymentType): bool
     {
-        return $user->hasPermissionTo('payment_types.delete');
+        return $user->hasPermissionInBranch('payment_types.delete');
     }
 }

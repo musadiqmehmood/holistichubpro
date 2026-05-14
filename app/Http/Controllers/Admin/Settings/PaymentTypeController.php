@@ -14,6 +14,9 @@ class PaymentTypeController extends Controller
 {
     use ApiResponse;
 
+    /**
+     * GET /api/v1/admin/payment-types
+     */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PaymentType::class);
@@ -28,6 +31,9 @@ class PaymentTypeController extends Controller
         return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
+    /**
+     * POST /api/v1/admin/payment-types
+     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', PaymentType::class);
@@ -44,12 +50,19 @@ class PaymentTypeController extends Controller
         return $this->created($paymentType);
     }
 
+    /**
+     * GET /api/v1/admin/payment-types/{paymentType}
+     */
     public function show(PaymentType $paymentType): JsonResponse
     {
         $this->authorize('view', $paymentType);
+
         return $this->success($paymentType);
     }
 
+    /**
+     * PUT /api/v1/admin/payment-types/{paymentType}
+     */
     public function update(Request $request, PaymentType $paymentType): JsonResponse
     {
         $this->authorize('update', $paymentType);
@@ -67,6 +80,9 @@ class PaymentTypeController extends Controller
         return $this->updated($paymentType->fresh());
     }
 
+    /**
+     * DELETE /api/v1/admin/payment-types/{paymentType}
+     */
     public function destroy(PaymentType $paymentType): JsonResponse
     {
         $this->authorize('delete', $paymentType);
@@ -80,6 +96,9 @@ class PaymentTypeController extends Controller
         return $this->deleted('Payment type deleted successfully');
     }
 
+    /**
+     * GET /api/v1/admin/payment-types/export
+     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PaymentType::class);
@@ -95,6 +114,11 @@ class PaymentTypeController extends Controller
         return $this->success($data);
     }
 
+    /**
+     * POST /api/v1/admin/payment-types/import
+     *
+     * Accepts a CSV file (columns: name, status).
+     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', PaymentType::class);

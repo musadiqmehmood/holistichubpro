@@ -5,11 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class BranchController extends Controller
 {
+    use ApiResponse;
     public function index(Request $request)
     {
         $this->authorize('viewAny', Branch::class);
@@ -21,7 +24,7 @@ class BranchController extends Controller
             ->orderBy('name')
             ->paginate($perPage);
 
-        return response()->json($branches);
+        return $this->paginated($branches);
     }
 
     public function store(Request $request)
@@ -40,13 +43,13 @@ class BranchController extends Controller
             $branch->toArray()
         );
 
-        return response()->json($branch, 201);
+        return $this->created($branch);
     }
 
     public function show(Branch $branch)
     {
         $this->authorize('view', $branch);
-        return response()->json($branch);
+        return $this->success($branch);
     }
 
     public function update(Request $request, Branch $branch)
@@ -67,7 +70,7 @@ class BranchController extends Controller
             $branch->fresh()->toArray()
         );
 
-        return response()->json($branch);
+        return $this->updated($branch);
     }
 
     public function destroy(Request $request, Branch $branch)
@@ -76,16 +79,12 @@ class BranchController extends Controller
 
         // Check if branch has users
         if ($branch->users()->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete branch with assigned users.'
-            ], 409);
+            return $this->conflict('Cannot delete branch with assigned users.');
         }
 
         // Check if branch is used in store settings
         if (\App\Models\StoreSetting::where('branch_id', $branch->id)->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete branch because it is used in store settings.'
-            ], 409);
+            return $this->conflict('Cannot delete branch because it is used in store settings.');
         }
 
         $oldValues = $branch->toArray();
@@ -94,7 +93,7 @@ class BranchController extends Controller
         AuditLogService::log('deleted', Branch::class, $branchId, $oldValues, null);
         $branch->delete();
 
-        return response()->json(['message' => 'Branch deleted successfully']);
+        return $this->deleted('Branch deleted successfully');
     }
 
     private function validationRules(bool $isUpdate = false): array

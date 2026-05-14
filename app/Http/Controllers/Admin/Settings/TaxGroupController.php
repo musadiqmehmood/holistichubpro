@@ -14,6 +14,14 @@ class TaxGroupController extends Controller
 {
     use ApiResponse;
 
+    /**
+     * GET /api/v1/admin/tax-groups
+     *
+     * Each group includes `taxes_detail` — the full Tax objects for every id in
+     * `tax_ids`, so the frontend never needs a second round-trip.
+     * Also returns `available_taxes` so the create/edit form can render the
+     * multi-select from DB data without a separate request.
+     */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', TaxGroup::class);
@@ -31,10 +39,7 @@ class TaxGroupController extends Controller
             fn(TaxGroup $g) => array_merge($g->toArray(), ['taxes_detail' => $g->taxes()])
         );
 
-        return response()->json([
-            'success'         => true,
-            'message'         => 'OK',
-            'data'            => $paginator->items(),
+        return $this->successWith($paginator->items(), [
             'meta'            => [
                 'current_page' => $paginator->currentPage(),
                 'last_page'    => $paginator->lastPage(),
@@ -45,6 +50,12 @@ class TaxGroupController extends Controller
         ]);
     }
 
+    /**
+     * POST /api/v1/admin/tax-groups
+     *
+     * `calculated_percentage` is computed server-side by summing the selected
+     * taxes — it is never trusted from the client.
+     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', TaxGroup::class);
@@ -78,21 +89,24 @@ class TaxGroupController extends Controller
         );
     }
 
+    /**
+     * GET /api/v1/admin/tax-groups/{taxGroup}
+     */
     public function show(TaxGroup $taxGroup): JsonResponse
     {
         $this->authorize('view', $taxGroup);
 
-        return response()->json([
-            'success'         => true,
-            'message'         => 'OK',
-            'data'            => array_merge(
-                $taxGroup->toArray(),
-                ['taxes_detail'    => $taxGroup->taxes()]
-            ),
-            'available_taxes' => Tax::active()->orderBy('name')->get(['id', 'name', 'percentage']),
-        ]);
+        return $this->successWith(
+            array_merge($taxGroup->toArray(), ['taxes_detail' => $taxGroup->taxes()]),
+            ['available_taxes' => Tax::active()->orderBy('name')->get(['id', 'name', 'percentage'])]
+        );
     }
 
+    /**
+     * PUT /api/v1/admin/tax-groups/{taxGroup}
+     *
+     * Recalculates `calculated_percentage` whenever `tax_ids` changes.
+     */
     public function update(Request $request, TaxGroup $taxGroup): JsonResponse
     {
         $this->authorize('update', $taxGroup);
@@ -119,13 +133,15 @@ class TaxGroupController extends Controller
 
         $fresh = $taxGroup->fresh();
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Tax group updated successfully',
-            'data'    => array_merge($fresh->toArray(), ['taxes_detail' => $fresh->taxes()]),
-        ]);
+        return $this->success(
+            array_merge($fresh->toArray(), ['taxes_detail' => $fresh->taxes()]),
+            'Tax group updated successfully'
+        );
     }
 
+    /**
+     * DELETE /api/v1/admin/tax-groups/{taxGroup}
+     */
     public function destroy(TaxGroup $taxGroup): JsonResponse
     {
         $this->authorize('delete', $taxGroup);

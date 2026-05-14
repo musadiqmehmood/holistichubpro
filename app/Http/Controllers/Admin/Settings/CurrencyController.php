@@ -15,6 +15,9 @@ class CurrencyController extends Controller
 {
     use ApiResponse;
 
+    /**
+     * GET /api/v1/admin/currencies
+     */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Currency::class);
@@ -32,6 +35,11 @@ class CurrencyController extends Controller
         return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
+    /**
+     * GET /api/v1/currencies/public
+     *
+     * No authentication required — cached for 1 hour.
+     */
     public function publicIndex(): JsonResponse
     {
         return $this->success(
@@ -41,6 +49,11 @@ class CurrencyController extends Controller
         );
     }
 
+    /**
+     * POST /api/v1/admin/currencies
+     *
+     * Currency code is normalised to uppercase before validation.
+     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Currency::class);
@@ -66,12 +79,19 @@ class CurrencyController extends Controller
         return $this->created($currency);
     }
 
+    /**
+     * GET /api/v1/admin/currencies/{currency}
+     */
     public function show(Currency $currency): JsonResponse
     {
         $this->authorize('view', $currency);
+
         return $this->success($currency);
     }
 
+    /**
+     * PUT /api/v1/admin/currencies/{currency}
+     */
     public function update(Request $request, Currency $currency): JsonResponse
     {
         $this->authorize('update', $currency);
@@ -100,6 +120,9 @@ class CurrencyController extends Controller
         return $this->updated($currency->fresh());
     }
 
+    /**
+     * DELETE /api/v1/admin/currencies/{currency}
+     */
     public function destroy(Currency $currency): JsonResponse
     {
         $this->authorize('delete', $currency);
@@ -119,6 +142,9 @@ class CurrencyController extends Controller
         return $this->deleted('Currency deleted successfully');
     }
 
+    /**
+     * GET /api/v1/admin/currencies/export
+     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Currency::class);
@@ -134,6 +160,11 @@ class CurrencyController extends Controller
         return $this->success($data);
     }
 
+    /**
+     * POST /api/v1/admin/currencies/import
+     *
+     * CSV columns: name, code (3 chars), symbol, status
+     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', Currency::class);

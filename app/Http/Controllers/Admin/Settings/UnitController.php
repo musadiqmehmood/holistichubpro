@@ -14,6 +14,9 @@ class UnitController extends Controller
 {
     use ApiResponse;
 
+    /**
+     * GET /api/v1/admin/units
+     */
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Unit::class);
@@ -28,6 +31,9 @@ class UnitController extends Controller
         return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
+    /**
+     * POST /api/v1/admin/units
+     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Unit::class);
@@ -45,12 +51,19 @@ class UnitController extends Controller
         return $this->created($unit);
     }
 
+    /**
+     * GET /api/v1/admin/units/{unit}
+     */
     public function show(Unit $unit): JsonResponse
     {
         $this->authorize('view', $unit);
+
         return $this->success($unit);
     }
 
+    /**
+     * PUT /api/v1/admin/units/{unit}
+     */
     public function update(Request $request, Unit $unit): JsonResponse
     {
         $this->authorize('update', $unit);
@@ -69,6 +82,9 @@ class UnitController extends Controller
         return $this->updated($unit->fresh());
     }
 
+    /**
+     * DELETE /api/v1/admin/units/{unit}
+     */
     public function destroy(Unit $unit): JsonResponse
     {
         $this->authorize('delete', $unit);
@@ -82,6 +98,9 @@ class UnitController extends Controller
         return $this->deleted('Unit deleted successfully');
     }
 
+    /**
+     * GET /api/v1/admin/units/export
+     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Unit::class);
@@ -97,6 +116,12 @@ class UnitController extends Controller
         return $this->success($data);
     }
 
+    /**
+     * POST /api/v1/admin/units/import
+     *
+     * Accepts a CSV file (columns: name, description, status).
+     * Skips duplicate names (firstOrCreate).
+     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', Unit::class);

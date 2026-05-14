@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -11,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 
 class BackupController extends Controller
 {
+    use ApiResponse;
     private const BACKUP_DIR = 'backups';
 
     private function getMysqldumpPath(): string
@@ -37,7 +39,6 @@ class BackupController extends Controller
         foreach ($possiblePaths as $pattern) {
             $matches = glob($pattern);
             if (!empty($matches)) {
-                // Return the first found (sorted alphabetically, so latest version might be first)
                 return $matches[0];
             }
         }
@@ -76,10 +77,9 @@ class BackupController extends Controller
         $mysqldump = $this->getMysqldumpPath();
 
         // SECURITY: Pass password via MYSQL_PWD env var — never visible in `ps aux`.
-        // Build args as array to avoid shell string interpolation entirely.
-        $env = array_merge(getenv(), [
-            'MYSQL_PWD' => $db['password'],
-        ]);
+        // Uses putenv() for cross-platform compatibility (Windows + Linux).
+        $oldPwd = getenv('MYSQL_PWD');
+        putenv('MYSQL_PWD=' . $db['password']);
 
         $descriptors = [
             0 => ['pipe', 'r'],   // stdin
@@ -98,15 +98,15 @@ class BackupController extends Controller
         ];
 
         $cmd = implode(' ', $args);
-        Log::info('Running backup', ['host' => $db['host'], 'database' => $db['database']]);
+        Log::info('Running backup', ['host' => $db['host'], 'database' => $db['database'], 'mysqldump' => $mysqldump]);
 
-        $process = proc_open($cmd, $descriptors, $pipes, null, $env);
+        // null env = inherits current process env (including MYSQL_PWD set above)
+        $process = proc_open($cmd, $descriptors, $pipes);
 
         if (!is_resource($process)) {
+            putenv('MYSQL_PWD' . ($oldPwd !== false ? '=' . $oldPwd : ''));
             Log::error('Backup failed: could not start mysqldump process');
-            return response()->json([
-                'message' => 'Backup failed. Could not start database dump process.',
-            ], 500);
+            return $this->serverError('Backup failed. Could not start database dump process.');
         }
 
         fclose($pipes[0]);
@@ -115,13 +115,13 @@ class BackupController extends Controller
 
         $exitCode = proc_close($process);
 
+        // Restore MYSQL_PWD env var
+        putenv('MYSQL_PWD' . ($oldPwd !== false ? '=' . $oldPwd : ''));
+
         if ($exitCode !== 0 || !file_exists($path) || filesize($path) === 0) {
             @unlink($path);
             Log::error('Backup failed', ['exitCode' => $exitCode, 'stderr' => $stderr]);
-            return response()->json([
-                'message' => 'Backup failed. Ensure mysqldump is available and DB credentials are correct.',
-                'detail' => $stderr,
-            ], 500);
+            return $this->error('Backup failed. Ensure mysqldump is available and DB credentials are correct.', 500);
         }
 
         // Purge backups older than 7 days
@@ -136,12 +136,11 @@ class BackupController extends Controller
             'size' => filesize($path),
         ]);
 
-        return response()->json([
+        return $this->success([
             'filename' => $filename,
             'size' => filesize($path),
             'created_at' => now()->toISOString(),
-            'message' => 'Backup created successfully',
-        ]);
+        ], 'Backup created successfully');
     }
 
     public function index(): JsonResponse
@@ -158,7 +157,7 @@ class BackupController extends Controller
 
         usort($list, fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
 
-        return response()->json($list);
+        return $this->success($list);
     }
 
     public function download(string $file): BinaryFileResponse
@@ -184,7 +183,7 @@ class BackupController extends Controller
 
         AuditLogService::log('backup_deleted', 'Database', 0, ['filename' => basename($file)], null);
 
-        return response()->json(['message' => 'Backup deleted successfully']);
+        return $this->deleted('Backup deleted successfully');
     }
 
     private function humanFilesize(int $bytes): string

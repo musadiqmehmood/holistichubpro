@@ -132,7 +132,8 @@ async function fetchBackups() {
     loadingList.value = true
     try {
         const res = await settingsApi.listBackups()
-        backups.value = res.data
+        // ApiResponse envelope: { success, message, data: [...] }
+        backups.value = res.data?.data ?? res.data
     } catch {
         uiStore.addNotification({ type: 'error', message: 'Failed to load backups' })
     } finally {
@@ -144,7 +145,8 @@ async function handleCreateBackup() {
     creating.value = true
     try {
         const res = await settingsApi.createBackup()
-        uiStore.addNotification({ type: 'success', message: `Backup created: ${res.data.filename}` })
+        const payload = res.data?.data ?? res.data
+        uiStore.addNotification({ type: 'success', message: `Backup created: ${payload?.filename ?? 'backup'}` })
         await fetchBackups()
     } catch (e) {
         uiStore.addNotification({

@@ -72,21 +72,26 @@ export const useSettingsStore = defineStore('settings', () => {
     const importing = ref(false)
     const exporting = ref(false)
 
-    // ── Helper: fetch for paginated lists (unchanged) ──────────────────
+    // ── Helper: fetch for paginated lists ──────────────────────────────
+    // Reads data + meta from the ApiResponse envelope:
+    //   { success, message, data: [...], meta: { current_page, last_page, ... } }
     async function fetchList(key, apiFn, filters, store) {
         loading[key] = true
         try {
             const res = await apiFn({ ...filters })
             const responseData = res.data
+            // ApiResponse envelope — extract items from .data, pagination from .meta
+            const payload = responseData.data ?? responseData
+            const meta    = responseData.meta ?? responseData
             store.value = {
-                data: responseData.data ?? responseData,
+                data: Array.isArray(payload) ? payload : (payload.data ?? []),
                 meta: {
-                    current_page: responseData.current_page ?? 1,
-                    last_page:    responseData.last_page    ?? 1,
-                    total:        responseData.total        ?? 0,
-                    from:         responseData.from         ?? 0,
-                    to:           responseData.to           ?? 0,
-                    per_page:     responseData.per_page     ?? filters.per_page ?? 10,
+                    current_page: meta.current_page ?? 1,
+                    last_page:    meta.last_page    ?? 1,
+                    total:        meta.total        ?? 0,
+                    from:         meta.from         ?? 0,
+                    to:           meta.to           ?? 0,
+                    per_page:     meta.per_page     ?? filters.per_page ?? 10,
                 }
             }
         } catch (e) {
@@ -96,20 +101,23 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Specialised fetch for tax groups (unchanged)
+    // Specialised fetch for tax groups
     const fetchTaxGroups = async () => {
         loading.taxGroups = true
         try {
             const res = await settingsApi.getTaxGroups({ ...taxGroupFilters })
-            const paginator = res.data.data
+            const responseData = res.data
+            const payload = responseData.data ?? responseData
+            const meta    = responseData.meta ?? responseData
             taxGroups.value = {
-                data: paginator?.data ?? [],
+                data: Array.isArray(payload) ? payload : (payload.data ?? []),
                 meta: {
-                    current_page: paginator?.current_page ?? 1,
-                    last_page:    paginator?.last_page    ?? 1,
-                    total:        paginator?.total        ?? 0,
-                    from:         paginator?.from         ?? 0,
-                    to:           paginator?.to           ?? 0,
+                    current_page: meta.current_page ?? 1,
+                    last_page:    meta.last_page    ?? 1,
+                    total:        meta.total        ?? 0,
+                    from:         meta.from         ?? 0,
+                    to:           meta.to           ?? 0,
+                    per_page:     meta.per_page     ?? taxGroupFilters.per_page ?? 10,
                 },
             }
         } catch (e) {
@@ -119,13 +127,13 @@ export const useSettingsStore = defineStore('settings', () => {
         }
     }
 
-    // Generic save helper (unchanged)
+    // Generic save helper — unwraps ApiResponse envelope { success, message, data }
     async function saveItem(apiFn, successMsg) {
         saving.value = true
         try {
             const res = await apiFn()
             uiStore.addNotification({ type: 'success', message: successMsg })
-            return res.data
+            return res.data?.data ?? res.data
         } catch (e) {
             const errors = e.response?.data?.errors
             if (!errors) {
@@ -142,7 +150,8 @@ export const useSettingsStore = defineStore('settings', () => {
         importing.value = true
         try {
             const res = await apiFn(file)
-            const { imported, skipped, errors } = res.data
+            const payload = res.data?.data ?? res.data
+            const { imported, skipped, errors } = payload
             uiStore.addNotification({ type: 'success', message: `Imported ${imported}, skipped ${skipped}` })
             if (errors?.length) console.warn('Import errors:', errors)
             await refetchFn()
@@ -157,7 +166,9 @@ export const useSettingsStore = defineStore('settings', () => {
         exporting.value = true
         try {
             const res = await apiFn({ ...filters, per_page: 10000 })
-            downloadCsv(res.data, filename)
+            // ApiResponse envelope: extract the actual data array
+            const rows = res.data?.data ?? res.data
+            downloadCsv(rows, filename)
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Export failed' })
         } finally {
@@ -170,9 +181,10 @@ export const useSettingsStore = defineStore('settings', () => {
         loading.site = true
         try {
             const res = await settingsApi.getSite()
-            siteSettings.value = res.data
-            localStorage.setItem('site_settings', JSON.stringify(res.data))
-            if (res.data.site_name) document.title = res.data.site_name
+            const payload = res.data?.data ?? res.data
+            siteSettings.value = payload
+            localStorage.setItem('site_settings', JSON.stringify(payload))
+            if (payload?.site_name) document.title = payload.site_name
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load site settings' })
         } finally {
@@ -194,10 +206,10 @@ export const useSettingsStore = defineStore('settings', () => {
         try {
             const targetBranchId = branchId || authStore.user?.branch_id
             const res = await settingsApi.getStore({ branch_id: targetBranchId })
-            const data = res.data.data || res.data
+            const data = res.data?.data ?? res.data
             storeSettings.value = data
             localStorage.setItem('store_settings', JSON.stringify(data))
-            return res.data
+            return data
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load store settings' })
         } finally {
@@ -206,11 +218,10 @@ export const useSettingsStore = defineStore('settings', () => {
     }
 
     const updateStoreSettings = async (form) => {
-        const res = await saveItem(() => settingsApi.updateStore(form), 'Store settings saved')
-        const data = res.data || res
+        const data = await saveItem(() => settingsApi.updateStore(form), 'Store settings saved')
         storeSettings.value = data
         localStorage.setItem('store_settings', JSON.stringify(data))
-        return res
+        return data
     }
 
     // ── SMTP Settings (unchanged) ───────────────────────────────────────
@@ -218,7 +229,7 @@ export const useSettingsStore = defineStore('settings', () => {
         loading.smtp = true
         try {
             const res = await settingsApi.getSmtp()
-            smtpSettings.value = res.data
+            smtpSettings.value = res.data?.data ?? res.data
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: 'Failed to load SMTP settings' })
         } finally {
@@ -235,7 +246,8 @@ export const useSettingsStore = defineStore('settings', () => {
     const testSmtp = async () => {
         try {
             const res = await settingsApi.testSmtp()
-            uiStore.addNotification({ type: 'success', message: res.data.message })
+            const payload = res.data?.data ?? res.data
+            uiStore.addNotification({ type: 'success', message: payload?.message ?? 'Test completed' })
         } catch (e) {
             uiStore.addNotification({ type: 'error', message: e.response?.data?.message ?? 'Test email failed' })
         }

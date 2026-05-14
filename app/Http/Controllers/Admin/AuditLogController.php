@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Traits\ApiResponse;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -14,6 +15,7 @@ use League\Csv\Writer;
 
 class AuditLogController extends Controller
 {
+    use ApiResponse;
     public function index(Request $request)
     {
         try {
@@ -57,17 +59,14 @@ class AuditLogController extends Controller
             $perPage = $request->input('per_page', 10);
             $logs = $query->paginate($perPage);
 
-            return response()->json($logs);
+            return $this->paginated($logs);
 
         } catch (\Exception $e) {
             Log::error('AuditLogController::index failed', [
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'message' => 'Failed to fetch audit logs',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverError('Failed to fetch audit logs: ' . $e->getMessage());
         }
     }
 
@@ -96,17 +95,14 @@ class AuditLogController extends Controller
                     ->get(),
             ];
 
-            return response()->json($stats);
+            return $this->success($stats);
 
         } catch (\Exception $e) {
             Log::error('AuditLogController::stats failed', [
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'message' => 'Failed to fetch audit stats',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverError('Failed to fetch audit stats: ' . $e->getMessage());
         }
     }
 
@@ -136,7 +132,7 @@ class AuditLogController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            return response()->json([
+            return $this->success([
                 'actions' => $actions,
                 'entity_types' => $entityTypes,
                 'performers' => $performers
@@ -147,10 +143,7 @@ class AuditLogController extends Controller
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'message' => 'Failed to fetch filter options',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverError('Failed to fetch filter options: ' . $e->getMessage());
         }
     }
 
@@ -161,19 +154,14 @@ class AuditLogController extends Controller
 
             $auditLog->delete();
 
-            return response()->json([
-                'message' => 'Audit log deleted successfully'
-            ]);
+            return $this->deleted('Audit log deleted successfully');
 
         } catch (\Exception $e) {
             Log::error('AuditLogController::destroy failed', [
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'message' => 'Failed to delete audit log',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverError('Failed to delete audit log: ' . $e->getMessage());
         }
     }
 
@@ -189,19 +177,14 @@ class AuditLogController extends Controller
 
             $count = AuditLog::whereIn('id', $request->ids)->delete();
 
-            return response()->json([
-                'message' => "{$count} audit logs deleted successfully"
-            ]);
+            return $this->success(null, "{$count} audit logs deleted successfully");
 
         } catch (\Exception $e) {
             Log::error('AuditLogController::bulkDestroy failed', [
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'message' => 'Failed to delete audit logs',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverError('Failed to delete audit logs: ' . $e->getMessage());
         }
     }
 
@@ -213,19 +196,14 @@ class AuditLogController extends Controller
             $count = AuditLog::count();
             AuditLog::truncate();
 
-            return response()->json([
-                'message' => "All {$count} audit logs cleared successfully"
-            ]);
+            return $this->success(null, "All {$count} audit logs cleared successfully");
 
         } catch (\Exception $e) {
             Log::error('AuditLogController::clearAll failed', [
                 'error' => $e->getMessage()
             ]);
 
-            return response()->json([
-                'message' => 'Failed to clear audit logs',
-                'error' => $e->getMessage()
-            ], 500);
+            return $this->serverError('Failed to clear audit logs: ' . $e->getMessage());
         }
     }
 
@@ -291,7 +269,7 @@ class AuditLogController extends Controller
 
         } catch (\Exception $e) {
             Log::error('AuditLogController::export failed', ['error' => $e->getMessage()]);
-            return response()->json(['message' => 'Failed to export audit logs', 'error' => $e->getMessage()], 500);
+            return $this->serverError('Failed to export audit logs: ' . $e->getMessage());
         }
     }
 

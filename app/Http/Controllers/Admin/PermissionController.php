@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use App\Models\AuditLog;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 
 // CRITICAL: Use Spatie's Permission model
 use Spatie\Permission\Models\Permission;
@@ -15,6 +16,7 @@ use Spatie\Permission\Models\Role;
 
 class PermissionController extends Controller
 {
+    use ApiResponse;
     /**
      * List all permissions grouped by resource
      */
@@ -43,7 +45,7 @@ class PermissionController extends Controller
                 ];
             });
 
-        return response()->json($permissions);
+        return $this->paginated($permissions);
     }
 
     /**
@@ -74,10 +76,7 @@ class PermissionController extends Controller
         // Clear cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return response()->json([
-            'message' => 'Permission created successfully',
-            'permission' => $permission,
-        ], 201);
+        return $this->created($permission, 'Permission created successfully');
     }
 
     /**
@@ -87,18 +86,13 @@ class PermissionController extends Controller
     {
         $this->authorize('view', $permission);
 
-        return response()->json([
+        return $this->success([
             'id' => $permission->id,
             'name' => $permission->name,
             'guard_name' => $permission->guard_name,
             'created_at' => $permission->created_at,
             'updated_at' => $permission->updated_at,
-            'roles' => $permission->roles->map(function ($role) {
-                return [
-                    'id' => $role->id,
-                    'name' => $role->name,
-                ];
-            }),
+            'roles' => $permission->roles->map(fn($r) => ['id' => $r->id, 'name' => $r->name]),
         ]);
     }
 
@@ -133,10 +127,7 @@ class PermissionController extends Controller
         // Clear cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return response()->json([
-            'message' => 'Permission updated successfully',
-            'permission' => $permission,
-        ]);
+        return $this->updated($permission, 'Permission updated successfully');
     }
 
     /**
@@ -157,23 +148,17 @@ class PermissionController extends Controller
             ->count();
 
         if ($roleCount > 0) {
-            return response()->json([
-                'message' => 'Cannot delete permission assigned to roles',
-                'roles_count' => $roleCount,
-            ], 409);
+            return $this->conflict('Cannot delete permission assigned to roles');
         }
 
         // Check if permission is assigned directly to any users
         $userCount = DB::table('model_has_permissions')
             ->where('permission_id', $permission->id)
-            ->where('model_type', 'App\Models\User')
+            ->where('model_type', 'App\\Models\\User')
             ->count();
 
         if ($userCount > 0) {
-            return response()->json([
-                'message' => 'Cannot delete permission assigned directly to users',
-                'users_count' => $userCount,
-            ], 409);
+            return $this->conflict('Cannot delete permission assigned directly to users');
         }
 
         // EXPLICIT AUDIT LOG - Using Service
@@ -184,6 +169,6 @@ class PermissionController extends Controller
         // Clear cache
         app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
 
-        return response()->json(['message' => 'Permission deleted successfully']);
+        return $this->deleted('Permission deleted successfully');
     }
 }

@@ -5,16 +5,18 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\SiteSetting;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
 class SiteSettingController extends Controller
 {
+    use ApiResponse;
     public function show(): JsonResponse
     {
         $setting = SiteSetting::firstOrCreate([], ['site_name' => config('app.name', 'HolisticHubPro')]);
-        return response()->json($setting);
+        return $this->success($setting);
     }
 
     public function update(Request $request): JsonResponse
@@ -40,6 +42,6 @@ class SiteSettingController extends Controller
 
         AuditLogService::log('updated', SiteSetting::class, $setting->id, $old, $setting->fresh()->toArray());
 
-        return response()->json($setting->fresh());
+        return $this->updated($setting->fresh());
     }
 }

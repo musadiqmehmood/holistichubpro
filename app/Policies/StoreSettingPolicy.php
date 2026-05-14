@@ -10,11 +10,11 @@ class StoreSettingPolicy
     // super-admin is caught by Gate::before in AuthServiceProvider
     public function manage(User $user): bool
     {
-        return $user->hasPermissionTo('settings.manage');
+        return $user->hasPermissionInBranch('settings.manage');
     }
 
     public function view(User $user): bool
     {
-        return $user->hasPermissionTo('settings.view');
+        return $user->hasPermissionInBranch('settings.view');
     }
 }

@@ -7,11 +7,20 @@ use App\Models\Branch;
 use App\Models\StoreSetting;
 use App\Services\AuditLogService;
 use App\Services\Settings\StoreSettingsService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class StoreSettingController extends Controller
 {
+    use ApiResponse;
+    /**
+     * GET /api/admin/store-settings
+     *
+     * Returns store settings for the current (or requested) branch
+     * together with dropdown options so the frontend needs no
+     * additional round-trips.
+     */
     public function show(Request $request, StoreSettingsService $service): JsonResponse
     {
         $branchId = (int) ($request->query('branch_id')
@@ -19,19 +28,20 @@ class StoreSettingController extends Controller
             ?? Branch::first()?->id);
 
         if (!$branchId) {
-            return response()->json([
-                'message' => 'No branch found. Please create a branch first.',
-            ], 404);
+            return $this->notFound('No branch found. Please create a branch first.');
         }
 
         $setting = $service->findOrInitialize($branchId);
 
-        return response()->json([
-            'data'    => $setting,
-            'options' => $service->buildOptions(),
-        ]);
+        return $this->successWith($setting, ['options' => $service->buildOptions()]);
     }
 
+    /**
+     * POST /api/admin/store-settings
+     *
+     * Creates or updates the setting row for the given branch.
+     * File uploads (store_logo, signature) are handled by the service.
+     */
     public function update(Request $request, StoreSettingsService $service): JsonResponse
     {
         $this->authorize('manage', StoreSetting::class);
@@ -78,9 +88,6 @@ class StoreSettingController extends Controller
             $updated->toArray()
         );
 
-        return response()->json([
-            'data'    => $updated,
-            'options' => $service->buildOptions(),
-        ]);
+        return $this->successWith($updated, ['options' => $service->buildOptions()], $isNew ? 'Created successfully' : 'Updated successfully');
     }
 }

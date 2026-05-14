@@ -107,7 +107,7 @@ Route::prefix('v1')->group(function () {
 
                 // ── Singleton settings (one row each, POST because of file uploads) ─
                 Route::get('site-settings',        [SiteSettingController::class,  'show'])->middleware('can:settings.view');
-                Route::post('site-settings',       [SiteController::class,  'update'])->middleware('can:settings.manage');
+                Route::post('site-settings',       [SiteSettingController::class,  'update'])->middleware('can:settings.manage');
 
                 // Store settings show() returns {data, options} so the form has
                 // live currency/branch dropdowns without a second request.

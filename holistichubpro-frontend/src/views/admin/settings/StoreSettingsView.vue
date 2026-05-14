@@ -74,10 +74,14 @@
                         </AppFormField>
 
                         <AppFormField label="Branch" id="branch_id" required :error="errors.branch_id?.[0]" class="sm:col-span-2">
-                            <select id="branch_id" name="branch_id" v-model="form.branch_id" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20" required>
-                                <option value="">Select branch</option>
-                                <option v-for="b in branches" :key="b.id" :value="b.id">{{ b.name }}</option>
-                            </select>
+                            <AppSelect
+                                v-model="form.branch_id"
+                                :options="branches"
+                                option-label="name"
+                                option-value="id"
+                                placeholder="Select branch..."
+                                searchable
+                            />
                         </AppFormField>
 
                         <AppFormField label="Bank Details" id="bank_details" :error="errors.bank_details?.[0]" class="sm:col-span-2">
@@ -131,59 +135,33 @@
                 <AppCard>
                     <div class="grid grid-cols-1 gap-5 sm:grid-cols-2">
                         <AppFormField label="Timezone" id="timezone" :error="errors.timezone?.[0]" class="sm:col-span-2">
-                            <select id="timezone" name="timezone" v-model="form.timezone" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option v-for="tz in timezones" :key="tz" :value="tz">{{ tz }}</option>
-                            </select>
+                            <AppSelect v-model="form.timezone" :options="timezones" placeholder="Search timezone..." searchable />
                         </AppFormField>
 
                         <AppFormField label="Date Format" id="date_format" :error="errors.date_format?.[0]">
-                            <select id="date_format" name="date_format" v-model="form.date_format" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option value="Y-m-d">YYYY-MM-DD (2026-01-31)</option>
-                                <option value="d/m/Y">DD/MM/YYYY (31/01/2026)</option>
-                                <option value="m/d/Y">MM/DD/YYYY (01/31/2026)</option>
-                                <option value="d-M-Y">DD-Mon-YYYY (31-Jan-2026)</option>
-                            </select>
+                            <AppSelect v-model="form.date_format" :options="dateFormatOptions" option-label="label" option-value="value" placeholder="Select date format..." searchable />
+                            <div v-if="form.date_format" class="mt-1 text-xs text-[var(--text-secondary)]">Preview: <span class="font-mono text-[var(--primary-color)]">{{ formatDate(new Date()) }}</span></div>
                         </AppFormField>
 
                         <AppFormField label="Time Format" id="time_format" :error="errors.time_format?.[0]">
-                            <select id="time_format" name="time_format" v-model="form.time_format" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option value="H:i:s">24 Hour (14:30:00)</option>
-                                <option value="H:i">24 Hour Short (14:30)</option>
-                                <option value="h:i A">12 Hour (02:30 PM)</option>
-                            </select>
+                            <AppSelect v-model="form.time_format" :options="timeFormatOptions" option-label="label" option-value="value" placeholder="Select time format..." searchable />
+                            <div v-if="form.time_format" class="mt-1 text-xs text-[var(--text-secondary)]">Preview: <span class="font-mono text-[var(--primary-color)]">{{ formatTime(new Date()) }}</span></div>
                         </AppFormField>
 
                         <AppFormField label="Currency" id="currency" :error="errors.currency?.[0]">
-                            <select id="currency" name="currency" v-model="form.currency" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option v-for="c in activeCurrencies" :key="c.code" :value="c.code">
-                                    {{ c.name }} ({{ c.code }})
-                                </option>
-                            </select>
+                            <AppSelect v-model="form.currency" :options="activeCurrencies" option-label="name" option-value="code" placeholder="Search currency..." searchable />
                         </AppFormField>
 
                         <AppFormField label="Currency Symbol Placement" id="currency_symbol_placement" :error="errors.currency_symbol_placement?.[0]">
-                            <select id="currency_symbol_placement" name="currency_symbol_placement" v-model="form.currency_symbol_placement" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option value="before">Before Amount ($100)</option>
-                                <option value="after">After Amount (100$)</option>
-                            </select>
+                            <AppSelect v-model="form.currency_symbol_placement" :options="placementOptions" option-label="label" option-value="value" placeholder="Select placement..." />
                         </AppFormField>
 
                         <AppFormField label="Decimals" id="decimals" :error="errors.decimals?.[0]">
-                            <select id="decimals" name="decimals" v-model.number="form.decimals" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option :value="0">0</option>
-                                <option :value="1">1</option>
-                                <option :value="2">2</option>
-                                <option :value="3">3</option>
-                            </select>
+                            <AppSelect v-model.number="form.decimals" :options="decimalsOptions" placeholder="Select..." />
                         </AppFormField>
 
                         <AppFormField label="Decimals for Quantity" id="decimals_for_quantity" :error="errors.decimals_for_quantity?.[0]">
-                            <select id="decimals_for_quantity" name="decimals_for_quantity" v-model.number="form.decimals_for_quantity" class="block w-full rounded-lg border border-neutral-30 bg-white px-4 py-2.5 text-sm focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20">
-                                <option :value="0">0</option>
-                                <option :value="1">1</option>
-                                <option :value="2">2</option>
-                                <option :value="3">3</option>
-                            </select>
+                            <AppSelect v-model.number="form.decimals_for_quantity" :options="decimalsOptions" placeholder="Select..." />
                         </AppFormField>
                     </div>
                 </AppCard>
@@ -201,21 +179,47 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
+import { useFormatter } from '@/utils/format'
 import api from '@/api/axios'
 import AppCard from '@/components/ui/AppCard.vue'
 import AppFormField from '@/components/ui/AppFormField.vue'
 import AppButton from '@/components/ui/AppButton.vue'
 import AppToggle from '@/components/ui/AppToggle.vue'
+import AppSelect from '@/components/ui/AppSelect.vue'
 
 defineOptions({ name: 'StoreSettingsView' })
 
 const settingsStore = useSettingsStore()
+const { formatDate, formatTime } = useFormatter()
 
 const activeTab = ref('general')
 const tabs = [
     { id: 'general', label: 'General' },
     { id: 'localization', label: 'Localization' },
 ]
+
+// Static option lists for searchable dropdowns
+const dateFormatOptions = [
+    { value: 'Y-m-d', label: 'YYYY-MM-DD (2025-01-31)' },
+    { value: 'd/m/Y', label: 'DD/MM/YYYY (31/01/2025)' },
+    { value: 'm/d/Y', label: 'MM/DD/YYYY (01/31/2025)' },
+    { value: 'd-M-Y', label: 'DD-Mon-YYYY (31-Jan-2025)' },
+    { value: 'd.m.Y', label: 'DD.MM.YYYY (31.01.2025)' },
+    { value: 'M d, Y', label: 'Mon DD, YYYY (Jan 31, 2025)' },
+]
+
+const timeFormatOptions = [
+    { value: 'H:i', label: '24-hour (13:05)' },
+    { value: 'H:i:s', label: '24-hour with seconds (13:05:09)' },
+    { value: 'h:i A', label: '12-hour (01:05 PM)' },
+]
+
+const placementOptions = [
+    { value: 'before', label: 'Before amount ($100)' },
+    { value: 'after', label: 'After amount (100$)' },
+]
+
+const decimalsOptions = [0, 1, 2, 3]
 
 const branches = ref([])
 const timezones = ref([])
