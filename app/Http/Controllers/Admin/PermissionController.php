@@ -24,10 +24,13 @@ class PermissionController extends Controller
     {
         $this->authorize('viewAny', Permission::class);
 
-        $perPage = (int) $request->input('per_page', 50);
-        $perPage = min($perPage, 100);
+        // Use a very high per_page so ALL permissions are returned on one page.
+        // Permissions are typically < 200 items; pagination would hide new ones.
+        $perPage = (int) $request->input('per_page', 1000);
+        $perPage = min($perPage, 1000);
 
         $permissions = Permission::with('roles')
+            ->orderBy('created_at', 'desc')
             ->paginate($perPage)
             ->through(function ($permission) {
                 return [

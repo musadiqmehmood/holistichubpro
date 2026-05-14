@@ -274,15 +274,12 @@ const fetchPermissions = async () => {
     error.value = null
     try {
         const response = await permissionsApi.getAll()
-        const data = response.data
-        if (Array.isArray(data)) {
-            permissions.value = data
-        } else if (data && Array.isArray(data.data)) {
-            permissions.value = data.data
-        } else if (data && data.flat && Array.isArray(data.flat)) {
-            permissions.value = data.flat
-        } else if (data) {
-            permissions.value = Object.values(data).flat()
+        const payload = response.data
+        // ApiResponse envelope: { success, message, data: [...], meta: {...} }
+        if (payload && Array.isArray(payload.data)) {
+            permissions.value = payload.data
+        } else if (Array.isArray(payload)) {
+            permissions.value = payload
         } else {
             permissions.value = []
         }
