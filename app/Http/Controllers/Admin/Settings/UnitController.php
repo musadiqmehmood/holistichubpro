@@ -5,15 +5,15 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\Unit;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class UnitController extends Controller
 {
-    /**
-     * GET /api/admin/units
-     */
+    use ApiResponse;
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Unit::class);
@@ -25,12 +25,9 @@ class UnitController extends Controller
                 fn($q) => $q->where('status', filter_var($request->status, FILTER_VALIDATE_BOOLEAN)))
             ->orderBy($request->sort_by ?? 'name', $request->sort_dir ?? 'asc');
 
-        return response()->json($query->paginate((int) ($request->per_page ?? 15)));
+        return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
-    /**
-     * POST /api/admin/units
-     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Unit::class);
@@ -45,22 +42,15 @@ class UnitController extends Controller
 
         AuditLogService::log('created', Unit::class, $unit->id, null, $unit->toArray());
 
-        return response()->json($unit, 201);
+        return $this->created($unit);
     }
 
-    /**
-     * GET /api/admin/units/{unit}
-     */
     public function show(Unit $unit): JsonResponse
     {
         $this->authorize('view', $unit);
-
-        return response()->json($unit);
+        return $this->success($unit);
     }
 
-    /**
-     * PUT /api/admin/units/{unit}
-     */
     public function update(Request $request, Unit $unit): JsonResponse
     {
         $this->authorize('update', $unit);
@@ -76,12 +66,9 @@ class UnitController extends Controller
 
         AuditLogService::log('updated', Unit::class, $unit->id, $old, $unit->fresh()->toArray());
 
-        return response()->json($unit->fresh());
+        return $this->updated($unit->fresh());
     }
 
-    /**
-     * DELETE /api/admin/units/{unit}
-     */
     public function destroy(Unit $unit): JsonResponse
     {
         $this->authorize('delete', $unit);
@@ -92,12 +79,9 @@ class UnitController extends Controller
 
         AuditLogService::log('deleted', Unit::class, $id, $old, null);
 
-        return response()->json(['message' => 'Unit deleted successfully']);
+        return $this->deleted('Unit deleted successfully');
     }
 
-    /**
-     * GET /api/admin/units/export
-     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Unit::class);
@@ -110,15 +94,9 @@ class UnitController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'description', 'status', 'created_at']);
 
-        return response()->json($data);
+        return $this->success($data);
     }
 
-    /**
-     * POST /api/admin/units/import
-     *
-     * Accepts a CSV file (columns: name, description, status).
-     * Skips duplicate names (firstOrCreate).
-     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', Unit::class);
@@ -170,7 +148,7 @@ class UnitController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
+            return $this->serverError('Import failed: ' . $e->getMessage());
         }
 
         if ($imported > 0) {
@@ -181,6 +159,6 @@ class UnitController extends Controller
             ]);
         }
 
-        return response()->json(compact('imported', 'skipped', 'errors'));
+        return $this->success(compact('imported', 'skipped', 'errors'), 'Import complete');
     }
 }

@@ -5,17 +5,15 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\Tax;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class TaxController extends Controller
 {
-    /**
-     * GET /api/admin/taxes
-     *
-     * Supports: ?search, ?status (0|1), ?sort_by, ?sort_dir, ?per_page
-     */
+    use ApiResponse;
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Tax::class);
@@ -27,12 +25,9 @@ class TaxController extends Controller
                 fn($q) => $q->where('status', filter_var($request->status, FILTER_VALIDATE_BOOLEAN)))
             ->orderBy($request->sort_by ?? 'name', $request->sort_dir ?? 'asc');
 
-        return response()->json($query->paginate((int) ($request->per_page ?? 15)));
+        return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
-    /**
-     * POST /api/admin/taxes
-     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Tax::class);
@@ -51,22 +46,15 @@ class TaxController extends Controller
 
         AuditLogService::log('created', Tax::class, $tax->id, null, $tax->toArray());
 
-        return response()->json($tax, 201);
+        return $this->created($tax);
     }
 
-    /**
-     * GET /api/admin/taxes/{tax}
-     */
     public function show(Tax $tax): JsonResponse
     {
         $this->authorize('view', $tax);
-
-        return response()->json($tax);
+        return $this->success($tax);
     }
 
-    /**
-     * PUT /api/admin/taxes/{tax}
-     */
     public function update(Request $request, Tax $tax): JsonResponse
     {
         $this->authorize('update', $tax);
@@ -75,9 +63,6 @@ class TaxController extends Controller
             'name'       => 'sometimes|string|max:255|unique:taxes,name,' . $tax->id,
             'percentage' => 'sometimes|numeric|min:0|max:100',
             'status'     => 'sometimes|boolean',
-        ], [
-            'percentage.min' => 'Tax percentage cannot be negative.',
-            'percentage.max' => 'Tax percentage cannot exceed 100%.',
         ]);
 
         $old = $tax->toArray();
@@ -85,12 +70,9 @@ class TaxController extends Controller
 
         AuditLogService::log('updated', Tax::class, $tax->id, $old, $tax->fresh()->toArray());
 
-        return response()->json($tax->fresh());
+        return $this->updated($tax->fresh());
     }
 
-    /**
-     * DELETE /api/admin/taxes/{tax}
-     */
     public function destroy(Tax $tax): JsonResponse
     {
         $this->authorize('delete', $tax);
@@ -101,14 +83,9 @@ class TaxController extends Controller
 
         AuditLogService::log('deleted', Tax::class, $id, $old, null);
 
-        return response()->json(['message' => 'Tax deleted successfully']);
+        return $this->deleted('Tax deleted successfully');
     }
 
-    /**
-     * GET /api/admin/taxes/export
-     *
-     * Returns all matching taxes as a flat JSON array for client-side CSV export.
-     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Tax::class);
@@ -121,15 +98,9 @@ class TaxController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'percentage', 'status', 'created_at']);
 
-        return response()->json($data);
+        return $this->success($data);
     }
 
-    /**
-     * POST /api/admin/taxes/import
-     *
-     * Accepts a CSV file (columns: name, percentage, status).
-     * Skips duplicate names (firstOrCreate).
-     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', Tax::class);
@@ -181,7 +152,7 @@ class TaxController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
+            return $this->serverError('Import failed: ' . $e->getMessage());
         }
 
         if ($imported > 0) {
@@ -192,6 +163,6 @@ class TaxController extends Controller
             ]);
         }
 
-        return response()->json(compact('imported', 'skipped', 'errors'));
+        return $this->success(compact('imported', 'skipped', 'errors'), 'Import complete');
     }
 }

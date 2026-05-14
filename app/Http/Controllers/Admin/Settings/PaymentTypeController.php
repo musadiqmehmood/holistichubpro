@@ -5,15 +5,15 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\PaymentType;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PaymentTypeController extends Controller
 {
-    /**
-     * GET /api/admin/payment-types
-     */
+    use ApiResponse;
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PaymentType::class);
@@ -25,12 +25,9 @@ class PaymentTypeController extends Controller
                 fn($q) => $q->where('status', filter_var($request->status, FILTER_VALIDATE_BOOLEAN)))
             ->orderBy($request->sort_by ?? 'name', $request->sort_dir ?? 'asc');
 
-        return response()->json($query->paginate((int) ($request->per_page ?? 15)));
+        return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
-    /**
-     * POST /api/admin/payment-types
-     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', PaymentType::class);
@@ -44,22 +41,15 @@ class PaymentTypeController extends Controller
 
         AuditLogService::log('created', PaymentType::class, $paymentType->id, null, $paymentType->toArray());
 
-        return response()->json($paymentType, 201);
+        return $this->created($paymentType);
     }
 
-    /**
-     * GET /api/admin/payment-types/{paymentType}
-     */
     public function show(PaymentType $paymentType): JsonResponse
     {
         $this->authorize('view', $paymentType);
-
-        return response()->json($paymentType);
+        return $this->success($paymentType);
     }
 
-    /**
-     * PUT /api/admin/payment-types/{paymentType}
-     */
     public function update(Request $request, PaymentType $paymentType): JsonResponse
     {
         $this->authorize('update', $paymentType);
@@ -74,12 +64,9 @@ class PaymentTypeController extends Controller
 
         AuditLogService::log('updated', PaymentType::class, $paymentType->id, $old, $paymentType->fresh()->toArray());
 
-        return response()->json($paymentType->fresh());
+        return $this->updated($paymentType->fresh());
     }
 
-    /**
-     * DELETE /api/admin/payment-types/{paymentType}
-     */
     public function destroy(PaymentType $paymentType): JsonResponse
     {
         $this->authorize('delete', $paymentType);
@@ -90,12 +77,9 @@ class PaymentTypeController extends Controller
 
         AuditLogService::log('deleted', PaymentType::class, $id, $old, null);
 
-        return response()->json(['message' => 'Payment type deleted successfully']);
+        return $this->deleted('Payment type deleted successfully');
     }
 
-    /**
-     * GET /api/admin/payment-types/export
-     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', PaymentType::class);
@@ -108,15 +92,9 @@ class PaymentTypeController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'status', 'created_at']);
 
-        return response()->json($data);
+        return $this->success($data);
     }
 
-    /**
-     * POST /api/admin/payment-types/import
-     *
-     * Accepts a CSV file (columns: name, status).
-     * Skips duplicate names (firstOrCreate).
-     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', PaymentType::class);
@@ -167,7 +145,7 @@ class PaymentTypeController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
+            return $this->serverError('Import failed: ' . $e->getMessage());
         }
 
         if ($imported > 0) {
@@ -178,6 +156,6 @@ class PaymentTypeController extends Controller
             ]);
         }
 
-        return response()->json(compact('imported', 'skipped', 'errors'));
+        return $this->success(compact('imported', 'skipped', 'errors'), 'Import complete');
     }
 }

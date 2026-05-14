@@ -5,15 +5,16 @@ namespace App\Http\Controllers\Admin\Settings;
 use App\Http\Controllers\Controller;
 use App\Models\Currency;
 use App\Services\AuditLogService;
+use App\Traits\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class CurrencyController extends Controller
 {
-    /**
-     * GET /api/admin/currencies
-     */
+    use ApiResponse;
+
     public function index(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Currency::class);
@@ -28,30 +29,22 @@ class CurrencyController extends Controller
                 fn($q) => $q->where('status', filter_var($request->status, FILTER_VALIDATE_BOOLEAN)))
             ->orderBy($request->sort_by ?? 'name', $request->sort_dir ?? 'asc');
 
-        return response()->json($query->paginate((int) ($request->per_page ?? 15)));
+        return $this->paginated($query->paginate((int) ($request->per_page ?? 15)));
     }
 
-    /**
-     * GET /api/currencies/public  (no auth required — for public dropdowns)
-     */
     public function publicIndex(): JsonResponse
     {
-        return response()->json(
+        return $this->success(
+            Cache::remember('currencies.public', 3600, fn() =>
             Currency::active()->orderBy('name')->get(['id', 'name', 'code', 'symbol'])
+            )
         );
     }
 
-    /**
-     * POST /api/admin/currencies
-     *
-     * Currency code is normalised to uppercase before validation so that
-     * `usd`, `USD`, and `Usd` are all treated as the same code.
-     */
     public function store(Request $request): JsonResponse
     {
         $this->authorize('create', Currency::class);
 
-        // Normalise code before validation runs
         $request->merge(['code' => strtoupper(trim($request->input('code', '')))]);
 
         $validated = $request->validate([
@@ -66,26 +59,19 @@ class CurrencyController extends Controller
 
         $currency = Currency::create(array_merge($validated, ['created_by' => auth()->id()]));
 
+        Cache::forget('currencies.public');
+
         AuditLogService::log('created', Currency::class, $currency->id, null, $currency->toArray());
 
-        return response()->json($currency, 201);
+        return $this->created($currency);
     }
 
-    /**
-     * GET /api/admin/currencies/{currency}
-     */
     public function show(Currency $currency): JsonResponse
     {
         $this->authorize('view', $currency);
-
-        return response()->json($currency);
+        return $this->success($currency);
     }
 
-    /**
-     * PUT /api/admin/currencies/{currency}
-     *
-     * Code is normalised to uppercase before validation runs.
-     */
     public function update(Request $request, Currency $currency): JsonResponse
     {
         $this->authorize('update', $currency);
@@ -107,39 +93,32 @@ class CurrencyController extends Controller
         $old = $currency->toArray();
         $currency->update($validated);
 
+        Cache::forget('currencies.public');
+
         AuditLogService::log('updated', Currency::class, $currency->id, $old, $currency->fresh()->toArray());
 
-        return response()->json($currency->fresh());
+        return $this->updated($currency->fresh());
     }
 
-    /**
-     * DELETE /api/admin/currencies/{currency}
-     *
-     * Consider warning the user if this currency is referenced in store_settings.
-     */
     public function destroy(Currency $currency): JsonResponse
     {
         $this->authorize('delete', $currency);
 
-        // Check if currency is used in store settings
         if (\App\Models\StoreSetting::where('currency', $currency->code)->exists()) {
-            return response()->json([
-                'message' => 'Cannot delete currency because it is used in store settings.'
-            ], 409);
+            return $this->conflict('Cannot delete currency because it is used in store settings.');
         }
 
         $old = $currency->toArray();
         $id  = $currency->id;
         $currency->delete();
 
+        Cache::forget('currencies.public');
+
         AuditLogService::log('deleted', Currency::class, $id, $old, null);
 
-        return response()->json(['message' => 'Currency deleted successfully']);
+        return $this->deleted('Currency deleted successfully');
     }
 
-    /**
-     * GET /api/admin/currencies/export
-     */
     public function export(Request $request): JsonResponse
     {
         $this->authorize('viewAny', Currency::class);
@@ -152,15 +131,9 @@ class CurrencyController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'symbol', 'status', 'created_at']);
 
-        return response()->json($data);
+        return $this->success($data);
     }
 
-    /**
-     * POST /api/admin/currencies/import
-     *
-     * CSV columns: name, code (3 chars), symbol, status
-     * Deduplication key: code (normalised to uppercase).
-     */
     public function import(Request $request): JsonResponse
     {
         $this->authorize('create', Currency::class);
@@ -214,7 +187,7 @@ class CurrencyController extends Controller
             DB::commit();
         } catch (\Throwable $e) {
             DB::rollBack();
-            return response()->json(['message' => 'Import failed: ' . $e->getMessage()], 500);
+            return $this->serverError('Import failed: ' . $e->getMessage());
         }
 
         if ($imported > 0) {
@@ -225,6 +198,6 @@ class CurrencyController extends Controller
             ]);
         }
 
-        return response()->json(compact('imported', 'skipped', 'errors'));
+        return $this->success(compact('imported', 'skipped', 'errors'), 'Import complete');
     }
 }
